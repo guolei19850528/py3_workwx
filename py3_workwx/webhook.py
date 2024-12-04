@@ -1,8 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
-from typing import Callable, Any, Union
 
+"""
+=================================================
+作者：[郭磊]
+手机：[15210720528]
+Email：[174000902@qq.com]
+Github：https://github.com/guolei19850528/py3_workwx
+=================================================
+"""
+
+from typing import Any, Union
 import requests
+from addict import Dict
 from jsonschema.validators import Draft202012Validator
 from requests import Response
 
@@ -41,7 +51,7 @@ class Webhook:
         :return:
         """
         if response.status_code == 200:
-            json = response.json()
+            json_addict = Dict(response.json())
             if Draft202012Validator({
                 "type": "object",
                 "properties": {
@@ -53,8 +63,8 @@ class Webhook:
                     }
                 },
                 "required": ["errcode"],
-            }).is_valid(json):
-                return json.get("media_id", True), response
+            }).is_valid(json_addict):
+                return json_addict.get("media_id", True), response
         return False, response
 
     def send(

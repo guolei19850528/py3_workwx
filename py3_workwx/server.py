@@ -1,161 +1,289 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
+"""
+=================================================
+作者：[郭磊]
+手机：[15210720528]
+Email：[174000902@qq.com]
+Github：https://github.com/guolei19850528/py3_workwx
+=================================================
+"""
 from datetime import timedelta
-from typing import Callable, Any, Union
+from typing import Union, Any
 
 import diskcache
 import redis
 import requests
 from addict import Dict
 from jsonschema.validators import Draft202012Validator
-from py3_response_handler.requests import ResponseHandler
-
-
-class ResponseHandler(ResponseHandler):
-    def json_errcode_0(self, response: requests.Response = None, status_code: int = 200):
-        json_addict = self.json_to_addict(response, status_code)
-        if Draft202012Validator({
-            "type": "object",
-            "properties": {
-                "errcode": {
-                    "oneOf": [
-                        {"type": "integer", "const": 0},
-                        {"type": "string", "const": "0"},
-                    ]
-                }
-            },
-            "required": ["errcode"],
-        }).is_valid(json_addict):
-            return json_addict.data
-        return None
+from requests import Response
 
 
 class Server:
-    """
-    @see https://developer.work.weixin.qq.com/document/path/90664
-    """
-
     def __init__(
             self,
             base_url: str = "https://qyapi.weixin.qq.com/",
-            corpid: str = "",
-            corpsecret: str = "",
-            agentid: Union[int, str] = "",
-            cache_instance: Union[diskcache.Cache, redis.Redis, redis.StrictRedis] = None,
+            corpid: str = None,
+            corpsecret: str = None,
+            agentid: Union[int, str] = None,
+            cache: Union[diskcache.Cache, redis.Redis, redis.StrictRedis] = None,
     ):
-        self._base_url: str = base_url
-        self._corpid: str = corpid
-        self._corpsecret: str = corpsecret
-        self._agentid: Union[int, str] = agentid
-        self._cache_instance: Union[diskcache.Cache, redis.Redis, redis.StrictRedis] = cache_instance
-        self._access_token: str = ""
-        self._response_handler: ResponseHandler = ResponseHandler()
+        if base_url.endswith("/"):
+            base_url = base_url[:-1]
+        self.base_url = base_url
+        self.corpid = corpid or ""
+        self.corpsecret = corpsecret or ""
+        self.agentid = agentid or ""
+        self.cache = cache or None
+        self.access_token = ""
 
-    @property
-    def agentid(self) -> Union[int, str]:
-        return self._agentid
+    def _default_response_handler(self, response: Response = None):
+        """
+        default response handler
+        :param response: requests.Response instance
+        :return:
+        """
+        if response.status_code == 200:
+            json_addict = Dict(response.json())
+            if Draft202012Validator({
+                "type": "object",
+                "properties": {
+                    "errcode": {
+                        "oneOf": [
+                            {"type": "integer", "const": 0},
+                            {"type": "string", "const": "0"},
+                        ]
+                    }
+                },
+                "required": ["errcode"],
+            }).is_valid(json_addict):
+                return json_addict, response
+        return False, response
 
     def get_api_domain_ip(
             self,
-            response_handler_callable: Callable = None,
             method: str = "GET",
             url: str = "/cgi-bin/get_api_domain_ip",
-            params: dict = None,
-            *args,
-            **kwargs
-    ):
-        if self._base_url.endswith("/"):
-            self._base_url = self._base_url[:-1]
-        if not url.startswith("http"):
-            if not url.startswith("/"):
-                url = f"/{url}"
-            url = f"{self._base_url}{url}"
-        params = Dict({})
-        params.setdefault("access_token", self._access_token)
-        response = requests.request(
-            method=method,
-            url=url,
-            params=params.to_dict(),
-            *args,
-            **kwargs
-        )
-        if isinstance(response_handler_callable, Callable):
-            return response_handler_callable(response)
-        json_addict = self._response_handler.json_to_addict(response, 200)
-        if Draft202012Validator({
-            "type": "object",
-            "properties": {
-                "ip_list": {"type": "array", "minItem": 1},
-            },
-            "required": ["ip_list"]
-        }).is_valid(json_addict):
-            return json_addict.ip_list
-        return None
-
-    def gettoken(
-            self,
-            response_handler_callable: Callable = None,
-            expire: Union[float, int, timedelta] = None,
-            method: str = "GET",
-            url: str = "/cgi-bin/gettoken",
-            params: dict = None,
-            *args,
             **kwargs
     ):
         """
-        @see https://developer.work.weixin.qq.com/document/path/91039
-        :param response_handler_callable: response handler callable
-        :param expire: cache expire in seconds
+        get api domain ip
+
+        @see https://developer.work.weixin.qq.com/document/path/92520
         :param method: requests.request method
         :param url: requests.request url
-        :param params: requests.request params
-        :param args: requests.request args
         :param kwargs: requests.request kwargs
         :return:
         """
-        if isinstance(self._cache_instance, Union[diskcache.Cache, redis.Redis, redis.StrictRedis]):
-            self._access_token = self._cache_instance.get(f"py3_workwx_server_access_token_{self._agentid}")
-        api_domain_ip_list = self.get_api_domain_ip(access_token=self._access_token)
-        if isinstance(api_domain_ip_list, list) and len(api_domain_ip_list):
-            return self
-        if self._base_url.endswith("/"):
-            self._base_url = self._base_url[:-1]
         if not url.startswith("http"):
             if not url.startswith("/"):
                 url = f"/{url}"
-            url = f"{self._base_url}{url}"
-        params = Dict(params)
-        params.setdefault("corpid", self._corpid)
-        params.setdefault("corpsecret", self._corpsecret)
-        response = requests.request(
-            method=method,
-            url=url,
-            params=params.to_dict(),
-            *args,
+            url = f"{self.base_url}{url}"
+        method = method or "GET"
+        url = url or "/cgi-bin/get_api_domain_ip"
+        params = kwargs.get("params", {})
+        params.setdefault("access_token", self.access_token)
+        kwargs["params"] = params
+        response = requests.request(method, url, **kwargs)
+        return self._default_response_handler(response)
+
+    def token_with_cache(
+            self,
+            expire: Union[float, int, timedelta] = None,
+            gettoken_kwargs: dict = None,
+            get_api_domain_ip_kwargs: dict = None
+    ):
+        """
+        access token with cache
+        :param expire: expire time default 7100 seconds
+        :param gettoken_kwargs: self.gettoken kwargs
+        :param get_api_domain_ip_kwargs: self.get_api_domain_ip kwargs
+        :return:
+        """
+        gettoken_kwargs = gettoken_kwargs or {}
+        get_api_domain_ip_kwargs = get_api_domain_ip_kwargs or {}
+        cache_key = f"py3_workwx_access_token_{self.agentid}"
+        if isinstance(self.cache, (diskcache.Cache, redis.Redis, redis.StrictRedis)):
+            self.access_token = self.cache.get(cache_key)
+        api_domain_ip, _ = self.get_api_domain_ip(**get_api_domain_ip_kwargs)
+        if not isinstance(api_domain_ip.ip_list, list) or not len(api_domain_ip.ip_list):
+            self.access_token = self.gettoken(**gettoken_kwargs)
+            if isinstance(self.access_token, str) and len(self.access_token):
+                if isinstance(self.cache, diskcache.Cache):
+                    return self.cache.set(
+                        key=cache_key,
+                        value=self.access_token,
+                        expire=expire or timedelta(seconds=7100).total_seconds()
+                    )
+                if isinstance(self.cache, (redis.Redis, redis.StrictRedis)):
+                    self.cache.setex(
+                        name=cache_key,
+                        value=self.access_token,
+                        time=expire or timedelta(seconds=7100),
+                    )
+
+        return self
+
+    def gettoken(
+            self,
+            method: str = "GET",
+            url: str = "/cgi-bin/gettoken",
             **kwargs
-        )
-        if isinstance(response_handler_callable, Callable):
-            response_handler_callable(response)
-            return self
-        json_addict = self._response_handler.json_errcode_0(response)
+    ):
+        """
+        get access token
+
+        @see https://developer.work.weixin.qq.com/document/path/91039
+        :param method:
+        :param url:
+        :param kwargs:
+        :return:
+        """
+        if not url.startswith("http"):
+            if not url.startswith("/"):
+                url = f"/{url}"
+            url = f"{self.base_url}{url}"
+        method = method or "GET"
+        url = url or "/cgi-bin/gettoken"
+        params = kwargs.get("params", {})
+        params.setdefault("corpid", self.corpid)
+        params.setdefault("corpsecret", self.corpsecret)
+        kwargs["params"] = params
+        response = requests.request(method, url, **kwargs)
+        result, _ = self._default_response_handler(response)
         if Draft202012Validator({
             "type": "object",
             "properties": {
                 "access_token": {"type": "string", "minLength": 1},
             },
             "required": ["access_token"]
-        }).is_valid(json_addict):
-            self._access_token = json_addict.get("access_token", None)
-            if isinstance(self._cache_instance, diskcache.Cache):
-                return self._cache_instance.set(
-                    key=f"py3_workwx_server_access_token_{self._agentid}",
-                    value=self._access_token,
-                    expire=expire or timedelta(seconds=7100).total_seconds()
-                )
-            if isinstance(self._cache_instance, (redis.Redis, redis.StrictRedis)):
-                self._cache_instance.setex(
-                    name=f"py3_workwx_server_access_token_{self._agentid}",
-                    value=self._access_token,
-                    time=expire or timedelta(seconds=7100),
-                )
+        }).is_valid(result):
+            self.access_token = result.get("access_token", None)
         return self
+
+    def message_send(
+            self,
+            method: str = "POST",
+            url: str = "/cgi-bin/message/send",
+            json_data: Any = None,
+            **kwargs
+    ):
+        """
+        message send
+
+        @see https://developer.work.weixin.qq.com/document/path/90236
+        :param method:
+        :param url:
+        :param json_data:
+        :param kwargs:
+        :return:
+        """
+        if not url.startswith("http"):
+            if not url.startswith("/"):
+                url = f"/{url}"
+            url = f"{self.base_url}{url}"
+        method = method or "POST"
+        url = url or "/cgi-bin/message/send"
+        json_data = json_data or {}
+        params = kwargs.get("params", {})
+        params.setdefault("access_token", self.access_token)
+        kwargs["params"] = params
+        response = requests.request(
+            method=method,
+            url=url,
+            json=json_data,
+            **kwargs
+        )
+        return self._default_response_handler(response)
+
+    def media_upload(
+            self,
+            types: str = None,
+            method: str = "POST",
+            url: str = "/cgi-bin/media/upload",
+            files: Any = None,
+            **kwargs
+    ):
+        """
+        media upload
+
+        @see https://developer.work.weixin.qq.com/document/path/90253
+        :param types:
+        :param method:
+        :param url:
+        :param files:
+        :param kwargs:
+        :return:
+        """
+        if not url.startswith("http"):
+            if not url.startswith("/"):
+                url = f"/{url}"
+            url = f"{self.base_url}{url}"
+        types = types if types in ["file", "image", "voice", "video"] else "file"
+        method = method or "POST"
+        url = url or "/cgi-bin/media/upload"
+        files = files or {}
+        params = kwargs.get("params", {})
+        params.setdefault("access_token", self.access_token)
+        params.setdefault("type", types)
+        kwargs["params"] = params
+        response = requests.request(
+            method=method,
+            url=url,
+            files=files,
+            **kwargs
+        )
+        result, _ = self._default_response_handler(response)
+        if Draft202012Validator({
+            "type": "object",
+            "properties": {
+                "media_id": {"type": "string", "minLength": 1},
+            },
+            "required": ["media_id"]
+        }).is_valid(result):
+            return result.get("media_id", None), response
+        return result, response
+
+    def uploadimg(
+            self,
+            method: str = "POST",
+            url: str = "/cgi-bin/media/uploadimg",
+            files: Any = None,
+            **kwargs
+    ):
+        """
+        upload image
+
+        @see https://developer.work.weixin.qq.com/document/path/90256
+        :param method:
+        :param url:
+        :param files:
+        :param kwargs:
+        :return:
+        """
+        if not url.startswith("http"):
+            if not url.startswith("/"):
+                url = f"/{url}"
+            url = f"{self.base_url}{url}"
+        method = method or "POST"
+        url = url or "/cgi-bin/media/uploadimg"
+        files = files or {}
+        params = kwargs.get("params", {})
+        params.setdefault("access_token", self.access_token)
+        kwargs["params"] = params
+        response = requests.request(
+            method=method,
+            url=url,
+            files=files,
+            **kwargs
+        )
+        result, _ = self._default_response_handler(response)
+        if Draft202012Validator({
+            "type": "object",
+            "properties": {
+                "url": {"type": "string", "minLength": 1},
+            },
+            "required": ["url"]
+        }).is_valid(result):
+            return result.get("url", None), response
+        return result, response
