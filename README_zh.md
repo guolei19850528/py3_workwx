@@ -1,4 +1,4 @@
-# py3-workwx
+# py3-workwx 中文
 
 A Python3 Work Weixin Library By Guolei
 
