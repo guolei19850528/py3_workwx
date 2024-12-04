@@ -1,22 +1,24 @@
-# py3-workwx 中文
+# 其他语言版本: [English](README.md), [中文](README_zh.md).**
 
-A Python3 Work Weixin Library By Guolei
+# py3-workwx
 
-# Official Documentation
+郭磊开发的Python3企业微信类库
 
-## [Webhook API](https://developer.work.weixin.qq.com/document/path/91770)
+# 官方文档
 
-## [Server API](https://developer.work.weixin.qq.com/document/path/90664)
+## [群机器人 API](https://developer.work.weixin.qq.com/document/path/91770)
 
-# Installation
+## [服务端 API](https://developer.work.weixin.qq.com/document/path/90664)
+
+# 安装
 
 ```shell
 pip install py3-workwx
 ```
 
-# Example
+# 示例
 
-## Webhook
+## 群机器人
 
 ```python
 from py3_workwx.webhook import Webhook
