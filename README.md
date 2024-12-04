@@ -1,3 +1,5 @@
+**Read this in other languages: [English](README.md), [中文](README_zh.md).**
+
 # py3-workwx
 
 A Python3 Work Weixin Library By Guolei
