@@ -20,6 +20,11 @@ from requests import Response
 
 
 class Server:
+    """
+    企业微信服务端 API Class
+    @see https://developer.work.weixin.qq.com/document/path/91039
+    """
+
     def __init__(
             self,
             base_url: str = "https://qyapi.weixin.qq.com/",
@@ -28,13 +33,14 @@ class Server:
             agentid: Union[int, str] = None,
             cache: Union[diskcache.Cache, redis.Redis, redis.StrictRedis] = None,
     ):
+        base_url = base_url if isinstance(base_url, str) else "https://qyapi.weixin.qq.com/"
         if base_url.endswith("/"):
             base_url = base_url[:-1]
         self.base_url = base_url
-        self.corpid = corpid or ""
-        self.corpsecret = corpsecret or ""
-        self.agentid = agentid or ""
-        self.cache = cache or None
+        self.corpid = corpid if isinstance(corpid, str) else ""
+        self.corpsecret = corpsecret if isinstance(corpsecret, str) else ""
+        self.agentid = agentid if isinstance(agentid, (int, str)) else ""
+        self.cache = cache if isinstance(cache, (diskcache.Cache, redis.Redis, redis.StrictRedis)) else None
         self.access_token = ""
 
     def _default_response_handler(self, response: Response = None):
@@ -43,7 +49,7 @@ class Server:
         :param response: requests.Response instance
         :return:
         """
-        if response.status_code == 200:
+        if isinstance(response, Response) and response.status_code == 200:
             json_addict = Dict(response.json())
             if Draft202012Validator({
                 "type": "object",
@@ -75,19 +81,19 @@ class Server:
         :param kwargs: requests.request kwargs
         :return:
         """
+        method = method if isinstance(method, str) else "GET"
+        url = url if isinstance(url, str) else "/cgi-bin/get_api_domain_ip"
         if not url.startswith("http"):
             if not url.startswith("/"):
                 url = f"/{url}"
             url = f"{self.base_url}{url}"
-        method = method or "GET"
-        url = url or "/cgi-bin/get_api_domain_ip"
         params = kwargs.get("params", {})
         params.setdefault("access_token", self.access_token)
         kwargs["params"] = params
         response = requests.request(method, url, **kwargs)
         return self._default_response_handler(response)
 
-    def token_with_cache(
+    def gettoken_with_cache(
             self,
             expire: Union[float, int, timedelta] = None,
             gettoken_kwargs: dict = None,
@@ -105,12 +111,12 @@ class Server:
         cache_key = f"py3_workwx_access_token_{self.agentid}"
         if isinstance(self.cache, (diskcache.Cache, redis.Redis, redis.StrictRedis)):
             self.access_token = self.cache.get(cache_key)
-        api_domain_ip, _ = self.get_api_domain_ip(**get_api_domain_ip_kwargs)
-        if not isinstance(api_domain_ip.ip_list, list) or not len(api_domain_ip.ip_list):
-            self.access_token = self.gettoken(**gettoken_kwargs)
+        api_domain_ip, r = self.get_api_domain_ip(**get_api_domain_ip_kwargs)
+        if not isinstance(api_domain_ip, dict) or not len(api_domain_ip.get("ip_list")):
+            self.gettoken(**gettoken_kwargs)
             if isinstance(self.access_token, str) and len(self.access_token):
                 if isinstance(self.cache, diskcache.Cache):
-                    return self.cache.set(
+                    self.cache.set(
                         key=cache_key,
                         value=self.access_token,
                         expire=expire or timedelta(seconds=7100).total_seconds()
@@ -139,12 +145,12 @@ class Server:
         :param kwargs:
         :return:
         """
+        method = method if isinstance(method, str) else "GET"
+        url = url if isinstance(url, str) else "/cgi-bin/gettoken"
         if not url.startswith("http"):
             if not url.startswith("/"):
                 url = f"/{url}"
             url = f"{self.base_url}{url}"
-        method = method or "GET"
-        url = url or "/cgi-bin/gettoken"
         params = kwargs.get("params", {})
         params.setdefault("corpid", self.corpid)
         params.setdefault("corpsecret", self.corpsecret)
@@ -165,7 +171,6 @@ class Server:
             self,
             method: str = "POST",
             url: str = "/cgi-bin/message/send",
-            json_data: Any = None,
             **kwargs
     ):
         """
@@ -178,20 +183,18 @@ class Server:
         :param kwargs:
         :return:
         """
+        method = method if isinstance(method, str) else "POST"
+        url = url if isinstance(url, str) else "/cgi-bin/message/send"
         if not url.startswith("http"):
             if not url.startswith("/"):
                 url = f"/{url}"
             url = f"{self.base_url}{url}"
-        method = method or "POST"
-        url = url or "/cgi-bin/message/send"
-        json_data = json_data or {}
         params = kwargs.get("params", {})
         params.setdefault("access_token", self.access_token)
         kwargs["params"] = params
         response = requests.request(
             method=method,
             url=url,
-            json=json_data,
             **kwargs
         )
         return self._default_response_handler(response)
@@ -201,7 +204,6 @@ class Server:
             types: str = None,
             method: str = "POST",
             url: str = "/cgi-bin/media/upload",
-            files: Any = None,
             **kwargs
     ):
         """
@@ -211,18 +213,17 @@ class Server:
         :param types:
         :param method:
         :param url:
-        :param files:
         :param kwargs:
         :return:
         """
+        types = types if types in ["file", "image", "voice", "video"] else "file"
+        method = method if isinstance(method, str) else "POST"
+        url = url if isinstance(url, str) else "/cgi-bin/media/upload"
         if not url.startswith("http"):
             if not url.startswith("/"):
                 url = f"/{url}"
             url = f"{self.base_url}{url}"
-        types = types if types in ["file", "image", "voice", "video"] else "file"
-        method = method or "POST"
-        url = url or "/cgi-bin/media/upload"
-        files = files or {}
+
         params = kwargs.get("params", {})
         params.setdefault("access_token", self.access_token)
         params.setdefault("type", types)
@@ -230,7 +231,6 @@ class Server:
         response = requests.request(
             method=method,
             url=url,
-            files=files,
             **kwargs
         )
         result, _ = self._default_response_handler(response)
@@ -248,7 +248,6 @@ class Server:
             self,
             method: str = "POST",
             url: str = "/cgi-bin/media/uploadimg",
-            files: Any = None,
             **kwargs
     ):
         """
@@ -261,20 +260,18 @@ class Server:
         :param kwargs:
         :return:
         """
+        method = method if isinstance(method, str) else "POST"
+        url = url if isinstance(url, str) else "/cgi-bin/media/uploadimg"
         if not url.startswith("http"):
             if not url.startswith("/"):
                 url = f"/{url}"
             url = f"{self.base_url}{url}"
-        method = method or "POST"
-        url = url or "/cgi-bin/media/uploadimg"
-        files = files or {}
         params = kwargs.get("params", {})
         params.setdefault("access_token", self.access_token)
         kwargs["params"] = params
         response = requests.request(
             method=method,
             url=url,
-            files=files,
             **kwargs
         )
         result, _ = self._default_response_handler(response)

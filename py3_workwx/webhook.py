@@ -37,12 +37,13 @@ class Webhook:
         :param mentioned_list: mentioned list
         :param mentioned_mobile_list: mentioned mobile list
         """
+        base_url = base_url if isinstance(base_url, str) else "https://qyapi.weixin.qq.com/"
         if base_url.endswith("/"):
             base_url = base_url[:-1]
         self.base_url = base_url
-        self.key = key or ""
-        self.mentioned_list = mentioned_list or []
-        self.mentioned_mobile_list = mentioned_mobile_list or []
+        self.key = key if isinstance(key, str) else ""
+        self.mentioned_list = mentioned_list if isinstance(mentioned_list, (tuple, list)) else []
+        self.mentioned_mobile_list = mentioned_mobile_list if isinstance(mentioned_mobile_list, (tuple, list)) else []
 
     def _default_response_handler(self, response: Response = None):
         """
@@ -50,7 +51,7 @@ class Webhook:
         :param response: requests.Response instance
         :return:
         """
-        if response.status_code == 200:
+        if isinstance(response, Response) and response.status_code == 200:
             json_addict = Dict(response.json())
             if Draft202012Validator({
                 "type": "object",
@@ -71,31 +72,27 @@ class Webhook:
             self,
             method: str = "POST",
             url: str = "/cgi-bin/webhook/send",
-            json_data: Any = None,
             **kwargs
     ):
         """
         webhook send
         :param method: requests.request method
         :param url: requests.request url
-        :param json_data: requests.request json
         :param kwargs: requests.request kwargs
         :return:
         """
+        method = method if isinstance(method, str) else "POST"
+        url = url if isinstance(url, str) else "/cgi-bin/webhook/send"
         if not url.startswith("http"):
             if not url.startswith("/"):
                 url = f"/{url}"
             url = f"{self.base_url}{url}"
-        method = method or "POST"
-        url = url or "/cgi-bin/webhook/send"
-        json_data = json_data or {}
         params = kwargs.get("params", {})
         params.setdefault("key", self.key)
         kwargs["params"] = params
         response = requests.request(
             method=method,
             url=url,
-            json=json_data,
             **kwargs
         )
         return self._default_response_handler(response)
@@ -117,18 +114,19 @@ class Webhook:
         :param kwargs:
         :return:
         """
-        content = content or ""
-        mentioned_list = mentioned_list or []
-        mentioned_mobile_list = mentioned_mobile_list or []
-        json_data = {
-            "msgtype": "text",
-            "text": {
-                "content": f"{content}",
-                "mentioned_list": self.mentioned_list + mentioned_list,
-                "mentioned_mobile_list": self.mentioned_mobile_list + mentioned_mobile_list,
-            }
-        }
-        return self.send(json_data=json_data, **kwargs)
+        mentioned_list = mentioned_list if (isinstance(mentioned_list, (tuple, list))) else []
+        mentioned_mobile_list = mentioned_mobile_list if (isinstance(mentioned_mobile_list, (tuple, list))) else []
+        return self.send(
+            json={
+                "msgtype": "text",
+                "text": {
+                    "content": f"{content}",
+                    "mentioned_list": self.mentioned_list + mentioned_list,
+                    "mentioned_mobile_list": self.mentioned_mobile_list + mentioned_mobile_list,
+                }
+            },
+            **kwargs
+        )
 
     def send_markdown(
             self,
@@ -143,18 +141,19 @@ class Webhook:
         :param kwargs:
         :return:
         """
-        content = content or ""
-        json_data = {
-            "msgtype": "markdown",
-            "markdown": {
-                "content": f"{content}",
-            }
-        }
-        return self.send(json_data=json_data, **kwargs)
+        return self.send(
+            json={
+                "msgtype": "markdown",
+                "markdown": {
+                    "content": f"{content}",
+                }
+            },
+            **kwargs
+        )
 
     def send_image(
             self,
-            base64_string: str = None,
+            image_base64: str = None,
             **kwargs
     ):
         """
@@ -165,15 +164,16 @@ class Webhook:
         :param kwargs:
         :return:
         """
-        base64_string = base64_string or ""
-        json_data = {
-            "msgtype": "image",
-            "image": {
-                "base64": f"{base64_string}",
-                "md5": "MD5",
-            }
-        }
-        return self.send(json_data=json_data, **kwargs)
+        return self.send(
+            json={
+                "msgtype": "image",
+                "image": {
+                    "base64": f"{image_base64}",
+                    "md5": "MD5",
+                }
+            },
+            **kwargs
+        )
 
     def send_news(
             self,
@@ -188,14 +188,16 @@ class Webhook:
         :param kwargs:
         :return:
         """
-        articles = articles or []
-        json_data = {
-            "msgtype": "news",
-            "news": {
-                "articles": articles,
-            }
-        }
-        return self.send(json_data=json_data, **kwargs)
+        articles = articles if isinstance(articles, list) else []
+        return self.send(
+            json={
+                "msgtype": "news",
+                "news": {
+                    "articles": articles,
+                }
+            },
+            **kwargs
+        )
 
     def send_file(
             self,
@@ -210,14 +212,15 @@ class Webhook:
         :param kwargs:
         :return:
         """
-        media_id = media_id or []
-        json_data = {
-            "msgtype": "file",
-            "file": {
-                "media_id": f"{media_id}"
-            }
-        }
-        return self.send(json_data=json_data, **kwargs)
+        return self.send(
+            json={
+                "msgtype": "file",
+                "file": {
+                    "media_id": f"{media_id}"
+                }
+            },
+            **kwargs
+        )
 
     def send_voice(
             self,
@@ -232,14 +235,15 @@ class Webhook:
         :param kwargs:
         :return:
         """
-        media_id = media_id or []
-        json_data = {
-            "msgtype": "voice",
-            "voice": {
-                "media_id": f"{media_id}"
-            }
-        }
-        return self.send(json_data=json_data, **kwargs)
+        return self.send(
+            json={
+                "msgtype": "voice",
+                "voice": {
+                    "media_id": f"{media_id}"
+                }
+            },
+            **kwargs
+        )
 
     def send_template_card(
             self,
@@ -254,19 +258,20 @@ class Webhook:
         :param kwargs:
         :return:
         """
-        template_card = template_card or {}
-        json_data = {
-            "msgtype": "template_card",
-            "template_card": template_card,
-        }
-        return self.send(json_data=json_data, **kwargs)
+        template_card = template_card if isinstance(template_card, dict) else {}
+        return self.send(
+            json={
+                "msgtype": "template_card",
+                "template_card": template_card,
+            },
+            **kwargs
+        )
 
     def upload_media(
             self,
             types: str = None,
             method: str = "POST",
             url: str = "/cgi-bin/webhook/upload_media",
-            files: Any = None,
             **kwargs
     ):
         """
@@ -280,14 +285,13 @@ class Webhook:
         :param kwargs:
         :return:
         """
+        types = types if types in ["file", "voice"] else "file"
+        method = method if isinstance(method, str) else "POST"
+        url = url if isinstance(url, str) else "/cgi-bin/webhook/send"
         if not url.startswith("http"):
             if not url.startswith("/"):
                 url = f"/{url}"
             url = f"{self.base_url}{url}"
-        types = types if types in ["file", "voice"] else "file"
-        method = method or "POST"
-        url = url or "/cgi-bin/webhook/send"
-        files = files or {}
         params = kwargs.get("params", {})
         params.setdefault("key", self.key)
         params.setdefault("type", types)
@@ -295,7 +299,6 @@ class Webhook:
         response = requests.request(
             method=method,
             url=url,
-            files=files,
             **kwargs
         )
         return self._default_response_handler(response)

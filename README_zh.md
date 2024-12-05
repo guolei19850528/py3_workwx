@@ -1,4 +1,4 @@
-# 其他语言版本: [English](README.md), [中文](README_zh.md).**
+# 其他语言版本: [English](README.md), [中文](README_zh.md)
 
 # py3-workwx
 
@@ -43,4 +43,45 @@ if media_id:
     state, _ = webhook.send_file(media_id=media_id)
 if state:
     print("successful")
+```
+
+## 服务端 API
+
+```python
+import os.path
+from datetime import datetime
+
+import diskcache
+
+from py3_workwx.server import Server
+
+cache = diskcache.Cache(directory=os.path.join(os.getcwd(), "runtime", "diskcache", "default"))
+
+server = Server(
+    corpid="<corpid>",
+    corpsecret="<corpsecret>",
+    agentid="<agentid>",
+    cache=cache
+)
+
+state, _ = server.gettoken_with_cache().message_send(
+    json={
+        "touser": "user",
+        "msgtype": "text",
+        "agentid": server.agentid,
+        "text": {
+            "content": f"test message {datetime.now()}",
+        }
+    }
+)
+if state:
+    print("successful")
+media_id, _ = server.media_upload(files={
+    "file": (
+        "README.md",
+        open(os.path.join(os.getcwd(), "README.md"), "rb")
+    )
+})
+if media_id:
+    print(media_id)
 ```
