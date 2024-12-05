@@ -106,12 +106,12 @@ class Server:
         :param get_api_domain_ip_kwargs: self.get_api_domain_ip kwargs
         :return:
         """
-        gettoken_kwargs = gettoken_kwargs or {}
-        get_api_domain_ip_kwargs = get_api_domain_ip_kwargs or {}
+        gettoken_kwargs = gettoken_kwargs if isinstance(gettoken_kwargs, dict) else {}
+        get_api_domain_ip_kwargs = get_api_domain_ip_kwargs if isinstance(get_api_domain_ip_kwargs, dict) else {}
         cache_key = f"py3_workwx_access_token_{self.agentid}"
         if isinstance(self.cache, (diskcache.Cache, redis.Redis, redis.StrictRedis)):
             self.access_token = self.cache.get(cache_key)
-        api_domain_ip, r = self.get_api_domain_ip(**get_api_domain_ip_kwargs)
+        api_domain_ip, _ = self.get_api_domain_ip(**get_api_domain_ip_kwargs)
         if not isinstance(api_domain_ip, dict) or not len(api_domain_ip.get("ip_list")):
             self.gettoken(**gettoken_kwargs)
             if isinstance(self.access_token, str) and len(self.access_token):
