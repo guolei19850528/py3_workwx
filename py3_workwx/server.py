@@ -31,7 +31,7 @@ class Server:
             corpid: str = None,
             corpsecret: str = None,
             agentid: Union[int, str] = None,
-            cache: Union[diskcache.Cache, redis.Redis, redis.StrictRedis] = None,
+            cache: Union[diskcache.Cache, redis.Redis, redis.StrictRedis] = None
     ):
         base_url = base_url if isinstance(base_url, str) else "https://qyapi.weixin.qq.com/"
         if base_url.endswith("/"):
@@ -90,7 +90,7 @@ class Server:
         params = kwargs.get("params", {})
         params.setdefault("access_token", self.access_token)
         kwargs["params"] = params
-        response = requests.request(method, url, **kwargs)
+        response = requests.request(method=method, url=url, **kwargs)
         return self._default_response_handler(response)
 
     def gettoken_with_cache(
@@ -155,7 +155,7 @@ class Server:
         params.setdefault("corpid", self.corpid)
         params.setdefault("corpsecret", self.corpsecret)
         kwargs["params"] = params
-        response = requests.request(method, url, **kwargs)
+        response = requests.request(method=method, url=url, **kwargs)
         result, _ = self._default_response_handler(response)
         if Draft202012Validator({
             "type": "object",
