@@ -17,7 +17,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 setup(
     name="py3-workwx",
-    version="1.0.1",
+    version="1.0.2",
     description="The Python3 Work Weixin Library Developed By Guolei",
     long_description=long_description,
     long_description_content_type="text/markdown",
