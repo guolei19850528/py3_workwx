@@ -16,6 +16,7 @@ import py3_requests
 from jsonschema.validators import Draft202012Validator
 from requests import Response
 
+
 class RequestUrl:
     """
     url settings
@@ -56,8 +57,6 @@ class ResponseHandler:
                 return json_addict.get("media_id", True)
             return None
         raise Exception(f"Response Handler Error {response.status_code}|{response.text}")
-
-
 
 
 class Webhook:
@@ -104,6 +103,9 @@ class Webhook:
         :return:
         """
         kwargs = Dict(kwargs)
+        kwargs.setdefault("method", "POST")
+        kwargs.setdefault("response_handler", ResponseHandler.normal_handler)
+        kwargs.setdefault("url", f"{self.base_url}{url}")
         kwargs.params = Dict({
             **{
                 "key": self.key,
@@ -111,9 +113,6 @@ class Webhook:
             **kwargs.params,
         })
         return py3_requests.request(
-            response_handler=response_handler,
-            method=method,
-            url=f"{self.base_url}{url}",
             **kwargs.to_dict()
         )
 
