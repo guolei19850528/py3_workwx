@@ -16,8 +16,16 @@ import py3_requests
 from jsonschema.validators import Draft202012Validator
 from requests import Response
 
+class RequestUrl:
+    """
+    url settings
+    """
+    BASE_URL = "https://qyapi.weixin.qq.com/"
+    SEND_URL = "/cgi-bin/webhook/send"
+    UPLOAD_MEDIA_URL = "/cgi-bin/webhook/upload_media"
 
-class JsonSchemaSettings:
+
+class ValidatorJsonSchema:
     """
     json schema settings
     """
@@ -44,19 +52,12 @@ class ResponseHandler:
     def normal_handler(response: Response = None):
         if isinstance(response, Response) and response.status_code == 200:
             json_addict = Dict(response.json())
-            if Draft202012Validator(JsonSchemaSettings.NORMAL_SCHEMA).is_valid(instance=json_addict):
+            if Draft202012Validator(ValidatorJsonSchema.NORMAL_SCHEMA).is_valid(instance=json_addict):
                 return json_addict.get("media_id", True)
             return None
         raise Exception(f"Response Handler Error {response.status_code}|{response.text}")
 
 
-class UrlSettings:
-    """
-    url settings
-    """
-    BASE_URL = "https://qyapi.weixin.qq.com/"
-    CGI_BIN_WEBHOOK_SEND_URL = "/cgi-bin/webhook/send"
-    CGI_BIN_WEBHOOK_UPLOAD_MEDIA_URL = "/cgi-bin/webhook/upload_media"
 
 
 class Webhook:
@@ -68,7 +69,7 @@ class Webhook:
 
     def __init__(
             self,
-            base_url: str = UrlSettings.BASE_URL,
+            base_url: str = RequestUrl.BASE_URL,
             key: str = "",
             mentioned_list: Union[tuple, list] = [],
             mentioned_mobile_list: Union[tuple, list] = []
@@ -91,7 +92,7 @@ class Webhook:
             self,
             response_handler: Callable = ResponseHandler.normal_handler,
             method: str = "POST",
-            url: str = UrlSettings.CGI_BIN_WEBHOOK_SEND_URL,
+            url: str = RequestUrl.SEND_URL,
             **kwargs
     ):
         """
@@ -338,7 +339,7 @@ class Webhook:
         kwargs.params.setdefault("key", self.key)
         kwargs.params.setdefault("type", types)
         kwargs.setdefault("method", "POST")
-        kwargs.setdefault("url", f"{self.base_url}{UrlSettings.CGI_BIN_WEBHOOK_UPLOAD_MEDIA_URL}")
+        kwargs.setdefault("url", f"{self.base_url}{RequestUrl.UPLOAD_MEDIA_URL}")
         return py3_requests.request(
             response_handler=response_handler,
             files=files,

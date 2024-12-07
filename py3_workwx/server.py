@@ -18,8 +18,16 @@ from addict import Dict
 from jsonschema.validators import Draft202012Validator
 from requests import Response
 
+class RequestUrl:
+    BASE_URL = "https://qyapi.weixin.qq.com/"
+    GETTOKEN_URL = "/cgi-bin/gettoken"
+    GET_API_DOMAIN_IP_URL = "/cgi-bin/get_api_domain_ip"
+    MESSAGE_SEND_URL = "/cgi-bin/message/send"
+    MEDIA_UPLOAD_URL = "/cgi-bin/media/upload"
+    MEDIA_UPLOADIMG_URL = "/cgi-bin/media/uploadimg"
 
-class JsonSchemaSettings:
+
+class ValidatorJsonSchema:
     NORMAL_SCHEMA = {
         "type": "object",
         "properties": {
@@ -71,19 +79,12 @@ class ResponseHandler:
     def default_handler(response: Response = None):
         if isinstance(response, Response) and response.status_code == 200:
             json_addict = Dict(response.json())
-            if Draft202012Validator(JsonSchemaSettings.NORMAL_SCHEMA).is_valid(instance=json_addict):
+            if Draft202012Validator(ValidatorJsonSchema.NORMAL_SCHEMA).is_valid(instance=json_addict):
                 return json_addict
             return None
         raise Exception(f"Response Handler Error {response.status_code}|{response.text}")
 
 
-class UrlSettings:
-    BASE_URL = "https://qyapi.weixin.qq.com/"
-    GETTOKEN_URL = "/cgi-bin/gettoken"
-    GET_API_DOMAIN_IP_URL = "/cgi-bin/get_api_domain_ip"
-    MESSAGE_SEND_URL = "/cgi-bin/message/send"
-    MEDIA_UPLOAD_URL = "/cgi-bin/media/upload"
-    MEDIA_UPLOADIMG_URL = "/cgi-bin/media/uploadimg"
 
 
 class Server:
@@ -95,7 +96,7 @@ class Server:
 
     def __init__(
             self,
-            base_url: str = UrlSettings.BASE_URL,
+            base_url: str = RequestUrl.BASE_URL,
             corpid: str = "",
             corpsecret: str = "",
             agentid: Union[int, str] = "",
@@ -130,9 +131,9 @@ class Server:
         """
         kwargs = Dict(kwargs)
         kwargs.setdefault("method", "GET")
-        kwargs.setdefault("url", UrlSettings.GET_API_DOMAIN_IP_URL)
+        kwargs.setdefault("url", RequestUrl.GET_API_DOMAIN_IP_URL)
         result = self.request_with_token(**kwargs.to_dict());
-        if Draft202012Validator(JsonSchemaSettings.GET_API_DOMAIN_IP_SCHEMA).is_valid(result):
+        if Draft202012Validator(ValidatorJsonSchema.GET_API_DOMAIN_IP_SCHEMA).is_valid(result):
             return result.get("ip_list", None)
         return None
 
@@ -152,7 +153,7 @@ class Server:
         cache_key = f"py3_workwx_access_token_{self.agentid}"
         if isinstance(self.cache, (diskcache.Cache, redis.Redis, redis.StrictRedis)):
             self.access_token = self.cache.get(cache_key)
-        if Draft202012Validator(JsonSchemaSettings.GET_API_DOMAIN_IP_SCHEMA).is_valid(
+        if Draft202012Validator(ValidatorJsonSchema.GET_API_DOMAIN_IP_SCHEMA).is_valid(
                 self.get_api_domain_ip(**get_api_domain_ip_kwargs)
         ):
             self.gettoken(**gettoken_kwargs)
@@ -187,13 +188,13 @@ class Server:
         kwargs = Dict(kwargs)
         kwargs.setdefault("response_handler", ResponseHandler.default_handler)
         kwargs.setdefault("method", "GET")
-        kwargs.setdefault("url", UrlSettings.GETTOKEN_URL)
+        kwargs.setdefault("url", RequestUrl.GETTOKEN_URL)
         kwargs.params.setdefault("corpid", self.corpid)
         kwargs.params.setdefault("corpsecret", self.corpsecret)
         result = py3_requests.request(
             **kwargs.to_dict(),
         )
-        if Draft202012Validator(JsonSchemaSettings.GETTOKEN_SCHEMA).is_valid(result):
+        if Draft202012Validator(ValidatorJsonSchema.GETTOKEN_SCHEMA).is_valid(result):
             self.access_token = result.get("access_token", None)
         return self
 
@@ -211,7 +212,7 @@ class Server:
         kwargs = Dict(kwargs)
         kwargs.setdefault("response_handler", ResponseHandler.default_handler)
         kwargs.setdefault("method", "POST")
-        kwargs.setdefault("url", UrlSettings.MESSAGE_SEND_URL)
+        kwargs.setdefault("url", RequestUrl.MESSAGE_SEND_URL)
         return self.request_with_token(**kwargs.to_dict())
 
     def media_upload(
@@ -228,9 +229,9 @@ class Server:
         kwargs = Dict(kwargs)
         kwargs.setdefault("response_handler", ResponseHandler.default_handler)
         kwargs.setdefault("method", "POST")
-        kwargs.setdefault("url", UrlSettings.MEDIA_UPLOAD_URL)
+        kwargs.setdefault("url", RequestUrl.MEDIA_UPLOAD_URL)
         result = self.request_with_token(**kwargs.to_dict())
-        if Draft202012Validator(JsonSchemaSettings.MEDIA_UPLOAD_SCHEMA).is_valid(result):
+        if Draft202012Validator(ValidatorJsonSchema.MEDIA_UPLOAD_SCHEMA).is_valid(result):
             return result.get("media_id", None)
         return None
 
@@ -251,8 +252,8 @@ class Server:
         kwargs = Dict(kwargs)
         kwargs.setdefault("response_handler", ResponseHandler.default_handler)
         kwargs.setdefault("method", "POST")
-        kwargs.setdefault("url", UrlSettings.MEDIA_UPLOAD_URL)
+        kwargs.setdefault("url", RequestUrl.MEDIA_UPLOAD_URL)
         result = self.request_with_token(**kwargs.to_dict())
-        if Draft202012Validator(JsonSchemaSettings.MEDIA_UPLOADIMG_SCHEMA).is_valid(result):
+        if Draft202012Validator(ValidatorJsonSchema.MEDIA_UPLOADIMG_SCHEMA).is_valid(result):
             return result.get("url", None)
         return None
