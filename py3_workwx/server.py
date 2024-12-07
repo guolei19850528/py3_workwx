@@ -188,7 +188,7 @@ class Server:
         kwargs = Dict(kwargs)
         kwargs.setdefault("response_handler", ResponseHandler.default_handler)
         kwargs.setdefault("method", "GET")
-        kwargs.setdefault("url", RequestUrl.GETTOKEN_URL)
+        kwargs.setdefault("url", f"{RequestUrl.BASE_URL}{RequestUrl.GETTOKEN_URL}")
         kwargs.params.setdefault("corpid", self.corpid)
         kwargs.params.setdefault("corpsecret", self.corpsecret)
         result = py3_requests.request(
