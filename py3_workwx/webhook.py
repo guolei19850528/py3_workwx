@@ -10,98 +10,117 @@ Github：https://github.com/guolei19850528/py3_workwx
 =================================================
 """
 
-from typing import Any, Union
-import requests
+from typing import Any, Union, Callable
 from addict import Dict
+import py3_requests
 from jsonschema.validators import Draft202012Validator
 from requests import Response
 
 
+class JsonSchemaSettings:
+    """
+    json schema settings
+    """
+    NORMAL_SCHEMA = {
+        "type": "object",
+        "properties": {
+            "errcode": {
+                "oneOf": [
+                    {"type": "integer", "const": 0},
+                    {"type": "string", "const": "0"},
+                ]
+            }
+        },
+        "required": ["errcode"],
+    }
+
+
+class ResponseHandler:
+    """
+    response handler
+    """
+
+    @staticmethod
+    def normal_handler(response: Response = None):
+        if isinstance(response, Response) and response.status_code == 200:
+            json_addict = Dict(response.json())
+            if Draft202012Validator(JsonSchemaSettings.NORMAL_SCHEMA).is_valid(instance=json_addict):
+                return json_addict.get("media_id", True)
+            return None
+        raise Exception(f"Response Handler Error {response.status_code}|{response.text}")
+
+
+class UrlSettings:
+    """
+    url settings
+    """
+    BASE_URL = "https://qyapi.weixin.qq.com/"
+    CGI_BIN_WEBHOOK_SEND_URL = "/cgi-bin/webhook/send"
+    CGI_BIN_WEBHOOK_UPLOAD_MEDIA_URL = "/cgi-bin/webhook/upload_media"
+
+
 class Webhook:
     """
-    企业微信 Webhook Class
+    Webhook Class
+
     @see https://developer.work.weixin.qq.com/document/path/91770
     """
 
     def __init__(
             self,
-            base_url: str = "https://qyapi.weixin.qq.com",
-            key: str = None,
-            mentioned_list: Union[tuple, list] = None,
-            mentioned_mobile_list: Union[tuple, list] = None
+            base_url: str = UrlSettings.BASE_URL,
+            key: str = "",
+            mentioned_list: Union[tuple, list] = [],
+            mentioned_mobile_list: Union[tuple, list] = []
     ):
         """
-        企业微信 Webhook Class
-        :param base_url: base url
-        :param key: key
-        :param mentioned_list: mentioned list
-        :param mentioned_mobile_list: mentioned mobile list
-        """
-        base_url = base_url if isinstance(base_url, str) else "https://qyapi.weixin.qq.com/"
-        if base_url.endswith("/"):
-            base_url = base_url[:-1]
-        self.base_url = base_url
-        self.key = key if isinstance(key, str) else ""
-        self.mentioned_list = mentioned_list if isinstance(mentioned_list, (tuple, list)) else []
-        self.mentioned_mobile_list = mentioned_mobile_list if isinstance(mentioned_mobile_list, (tuple, list)) else []
+        Webhook Class
 
-    def _default_response_handler(self, response: Response = None):
+        @see https://developer.work.weixin.qq.com/document/path/91770
+        :param base_url: base url, automatically remove the end /
+        :param key: webhook url params.key value
+        :param mentioned_list: mentioned userid list if message type == text enabled
+        :param mentioned_mobile_list: mentioned mobile list if message type == text enabled
         """
-        default response handler
-        :param response: requests.Response instance
-        :return:
-        """
-        if isinstance(response, Response) and response.status_code == 200:
-            json_addict = Dict(response.json())
-            if Draft202012Validator({
-                "type": "object",
-                "properties": {
-                    "errcode": {
-                        "oneOf": [
-                            {"type": "integer", "const": 0},
-                            {"type": "string", "const": "0"},
-                        ]
-                    }
-                },
-                "required": ["errcode"],
-            }).is_valid(json_addict):
-                return json_addict.get("media_id", True), response
-        return False, response
+        self.base_url = base_url[:-1] if base_url.endswith("/") else base_url
+        self.key = key
+        self.mentioned_list = mentioned_list
+        self.mentioned_mobile_list = mentioned_mobile_list
 
     def send(
             self,
+            response_handler: Callable = ResponseHandler.normal_handler,
             method: str = "POST",
-            url: str = "/cgi-bin/webhook/send",
+            url: str = UrlSettings.CGI_BIN_WEBHOOK_SEND_URL,
             **kwargs
     ):
         """
         webhook send
-        :param method: requests.request method
-        :param url: requests.request url
-        :param kwargs: requests.request kwargs
+        :param response_handler: py3_requests.request.response_handler
+        :param method: py3_requests.request method
+        :param url: py3_requests.request url
+        :param kwargs: py3_requests.request kwargs
         :return:
         """
-        method = method if isinstance(method, str) else "POST"
-        url = url if isinstance(url, str) else "/cgi-bin/webhook/send"
-        if not url.startswith("http"):
-            if not url.startswith("/"):
-                url = f"/{url}"
-            url = f"{self.base_url}{url}"
-        params = kwargs.get("params", {})
-        params.setdefault("key", self.key)
-        kwargs["params"] = params
-        response = requests.request(
+        kwargs = Dict(kwargs)
+        kwargs.params = Dict({
+            **{
+                "key": self.key,
+            },
+            **kwargs.params,
+        })
+        return py3_requests.request(
+            response_handler=response_handler,
             method=method,
-            url=url,
-            **kwargs
+            url=f"{self.base_url}{url}",
+            **kwargs.to_dict()
         )
-        return self._default_response_handler(response)
 
     def send_text(
             self,
-            content: str = None,
-            mentioned_list: Union[tuple, list] = None,
-            mentioned_mobile_list: Union[tuple, list] = None,
+            content: str = "",
+            mentioned_list: Union[tuple, list] = [],
+            mentioned_mobile_list: Union[tuple, list] = [],
             **kwargs
     ):
         """
@@ -111,13 +130,14 @@ class Webhook:
         :param content:
         :param mentioned_list:
         :param mentioned_mobile_list:
-        :param kwargs:
+        :param kwargs: webhook send kwargs
         :return:
         """
-        mentioned_list = mentioned_list if (isinstance(mentioned_list, (tuple, list))) else []
-        mentioned_mobile_list = mentioned_mobile_list if (isinstance(mentioned_mobile_list, (tuple, list))) else []
-        return self.send(
-            json={
+        kwargs = Dict(kwargs)
+        kwargs.setdefault("response_handler", ResponseHandler.normal_handler)
+        kwargs.setdefault("method", "POST")
+        kwargs.json = Dict({
+            **{
                 "msgtype": "text",
                 "text": {
                     "content": f"{content}",
@@ -125,12 +145,13 @@ class Webhook:
                     "mentioned_mobile_list": self.mentioned_mobile_list + mentioned_mobile_list,
                 }
             },
-            **kwargs
-        )
+            **kwargs.json,
+        })
+        return self.send(**kwargs.to_dict())
 
     def send_markdown(
             self,
-            content: str = None,
+            content: str = "",
             **kwargs
     ):
         """
@@ -141,43 +162,53 @@ class Webhook:
         :param kwargs:
         :return:
         """
-        return self.send(
-            json={
+        kwargs = Dict(kwargs)
+        kwargs.setdefault("response_handler", ResponseHandler.normal_handler)
+        kwargs.setdefault("method", "POST")
+
+        kwargs.json = Dict({
+            **{
                 "msgtype": "markdown",
                 "markdown": {
                     "content": f"{content}",
                 }
             },
-            **kwargs
-        )
+            **kwargs.json,
+        })
+        return self.send(**kwargs.to_dict())
 
     def send_image(
             self,
-            image_base64: str = None,
+            image_base64: str = "",
             **kwargs
     ):
         """
         webhook send image
 
         @see https://developer.work.weixin.qq.com/document/path/91770#%E5%9B%BE%E7%89%87%E7%B1%BB%E5%9E%8B
-        :param base64_string:
+        :param image_base64:
         :param kwargs:
         :return:
         """
-        return self.send(
-            json={
+        kwargs = Dict(kwargs)
+        kwargs.setdefault("response_handler", ResponseHandler.normal_handler)
+        kwargs.setdefault("method", "POST")
+
+        kwargs.json = Dict({
+            **{
                 "msgtype": "image",
                 "image": {
                     "base64": f"{image_base64}",
                     "md5": "MD5",
                 }
             },
-            **kwargs
-        )
+            **kwargs.json,
+        })
+        return self.send(**kwargs.to_dict())
 
     def send_news(
             self,
-            articles: list = None,
+            articles: list = [],
             **kwargs
     ):
         """
@@ -188,20 +219,24 @@ class Webhook:
         :param kwargs:
         :return:
         """
-        articles = articles if isinstance(articles, list) else []
-        return self.send(
-            json={
+        kwargs = Dict(kwargs)
+        kwargs.setdefault("response_handler", ResponseHandler.normal_handler)
+        kwargs.setdefault("method", "POST")
+
+        kwargs.json = Dict({
+            **{
                 "msgtype": "news",
                 "news": {
                     "articles": articles,
                 }
             },
-            **kwargs
-        )
+            **kwargs.json,
+        })
+        return self.send(**kwargs.to_dict())
 
     def send_file(
             self,
-            media_id: str = None,
+            media_id: str = "",
             **kwargs
     ):
         """
@@ -212,19 +247,24 @@ class Webhook:
         :param kwargs:
         :return:
         """
-        return self.send(
-            json={
+        kwargs = Dict(kwargs)
+        kwargs.setdefault("response_handler", ResponseHandler.normal_handler)
+        kwargs.setdefault("method", "POST")
+
+        kwargs.json = Dict({
+            **{
                 "msgtype": "file",
                 "file": {
                     "media_id": f"{media_id}"
                 }
             },
-            **kwargs
-        )
+            **kwargs.json,
+        })
+        return self.send(**kwargs.to_dict())
 
     def send_voice(
             self,
-            media_id: str = None,
+            media_id: str = "",
             **kwargs
     ):
         """
@@ -235,19 +275,24 @@ class Webhook:
         :param kwargs:
         :return:
         """
-        return self.send(
-            json={
+        kwargs = Dict(kwargs)
+        kwargs.setdefault("response_handler", ResponseHandler.normal_handler)
+        kwargs.setdefault("method", "POST")
+
+        kwargs.json = Dict({
+            **{
                 "msgtype": "voice",
                 "voice": {
                     "media_id": f"{media_id}"
                 }
             },
-            **kwargs
-        )
+            **kwargs.json,
+        })
+        return self.send(**kwargs.to_dict())
 
     def send_template_card(
             self,
-            template_card: Any = None,
+            template_card: Union[dict, Dict] = {},
             **kwargs
     ):
         """
@@ -258,47 +303,44 @@ class Webhook:
         :param kwargs:
         :return:
         """
-        template_card = template_card if isinstance(template_card, dict) else {}
-        return self.send(
-            json={
+        kwargs = Dict(kwargs)
+        kwargs.setdefault("response_handler", ResponseHandler.normal_handler)
+        kwargs.setdefault("method", "POST")
+
+        kwargs.json = Dict({
+            **{
                 "msgtype": "template_card",
                 "template_card": template_card,
             },
-            **kwargs
-        )
+            **kwargs.json,
+        })
+        return self.send(**kwargs.to_dict())
 
     def upload_media(
             self,
-            types: str = None,
-            method: str = "POST",
-            url: str = "/cgi-bin/webhook/upload_media",
+            response_handler: Callable = ResponseHandler.normal_handler,
+            types: str = "file",
+            files: Any = None,
             **kwargs
     ):
         """
         webhook upload media
 
         @see https://developer.work.weixin.qq.com/document/path/91770#%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0%E6%8E%A5%E5%8F%A3
-        :param types:
-        :param method:
-        :param url:
-        :param files:
-        :param kwargs:
+        :param response_handler: py3_requests.request response handler
+        :param types: must be "file" or "voice"
+        :param files: py3_requests.request files
+        :param kwargs: py3_requests.request kwargs
         :return:
         """
-        types = types if types in ["file", "voice"] else "file"
-        method = method if isinstance(method, str) else "POST"
-        url = url if isinstance(url, str) else "/cgi-bin/webhook/send"
-        if not url.startswith("http"):
-            if not url.startswith("/"):
-                url = f"/{url}"
-            url = f"{self.base_url}{url}"
-        params = kwargs.get("params", {})
-        params.setdefault("key", self.key)
-        params.setdefault("type", types)
-        kwargs["params"] = params
-        response = requests.request(
-            method=method,
-            url=url,
-            **kwargs
+        types = types.lower() if types.lower() in ["file", "voice"] else "file"
+        kwargs = Dict(kwargs)
+        kwargs.params.setdefault("key", self.key)
+        kwargs.params.setdefault("type", types)
+        kwargs.setdefault("method", "POST")
+        kwargs.setdefault("url", f"{self.base_url}{UrlSettings.CGI_BIN_WEBHOOK_UPLOAD_MEDIA_URL}")
+        return py3_requests.request(
+            response_handler=response_handler,
+            files=files,
+            **kwargs.to_dict(),
         )
-        return self._default_response_handler(response)

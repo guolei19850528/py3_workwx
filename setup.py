@@ -28,7 +28,7 @@ setup(
     keywors=["workwx", "work weixin", "企业微信", "群机器人", "服务端API", "webhook"],
     packages=setuptools.find_packages('./'),
     install_requires=[
-        "requests",
+        "py3-requests",
         "addict",
         "retrying",
         "jsonschema",

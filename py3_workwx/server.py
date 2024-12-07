@@ -9,9 +9,10 @@ Github：https://github.com/guolei19850528/py3_workwx
 =================================================
 """
 from datetime import timedelta
-from typing import Union, Any
+from typing import Union, Any, Callable
 
 import diskcache
+import py3_requests
 import redis
 import requests
 from addict import Dict
@@ -19,57 +20,104 @@ from jsonschema.validators import Draft202012Validator
 from requests import Response
 
 
+class JsonSchemaSettings:
+    NORMAL_SCHEMA = {
+        "type": "object",
+        "properties": {
+            "errcode": {
+                "oneOf": [
+                    {"type": "integer", "const": 0},
+                    {"type": "string", "const": "0"},
+                ]
+            }
+        },
+        "required": ["errcode"],
+    }
+
+    GETTOKEN_SCHEMA = {
+        "type": "object",
+        "properties": {
+            "access_token": {"type": "string", "minLength": 1},
+        },
+        "required": ["access_token"],
+    }
+
+    GET_API_DOMAIN_IP_SCHEMA = {
+        "type": "object",
+        "properties": {
+            "ip_list": {"type": "array", "minItem": 1},
+        },
+        "required": ["ip_list"],
+    }
+
+    MEDIA_UPLOAD_SCHEMA = {
+        "type": "object",
+        "properties": {
+            "media_id": {"type": "string", "minLength": 1},
+        },
+        "required": ["ip_list"],
+    }
+
+    MEDIA_UPLOADIMG_SCHEMA = {
+        "type": "object",
+        "properties": {
+            "media_id": {"type": "string", "minLength": 1},
+        },
+        "required": ["ip_list"],
+    }
+
+
+class ResponseHandler:
+    @staticmethod
+    def default_handler(response: Response = None):
+        if isinstance(response, Response) and response.status_code == 200:
+            json_addict = Dict(response.json())
+            if Draft202012Validator(JsonSchemaSettings.NORMAL_SCHEMA).is_valid(instance=json_addict):
+                return json_addict
+            return None
+        raise Exception(f"Response Handler Error {response.status_code}|{response.text}")
+
+
+class UrlSettings:
+    BASE_URL = "https://qyapi.weixin.qq.com/"
+    GETTOKEN_URL = "/cgi-bin/gettoken"
+    GET_API_DOMAIN_IP_URL = "/cgi-bin/get_api_domain_ip"
+    MESSAGE_SEND_URL = "/cgi-bin/message/send"
+    MEDIA_UPLOAD_URL = "/cgi-bin/media/upload"
+    MEDIA_UPLOADIMG_URL = "/cgi-bin/media/uploadimg"
+
+
 class Server:
     """
-    企业微信服务端 API Class
-    @see https://developer.work.weixin.qq.com/document/path/91039
+    Server API Class
+
+    @see https://developer.work.weixin.qq.com/document/path/90664
     """
 
     def __init__(
             self,
-            base_url: str = "https://qyapi.weixin.qq.com/",
-            corpid: str = None,
-            corpsecret: str = None,
-            agentid: Union[int, str] = None,
+            base_url: str = UrlSettings.BASE_URL,
+            corpid: str = "",
+            corpsecret: str = "",
+            agentid: Union[int, str] = "",
             cache: Union[diskcache.Cache, redis.Redis, redis.StrictRedis] = None
     ):
-        base_url = base_url if isinstance(base_url, str) else "https://qyapi.weixin.qq.com/"
-        if base_url.endswith("/"):
-            base_url = base_url[:-1]
-        self.base_url = base_url
-        self.corpid = corpid if isinstance(corpid, str) else ""
-        self.corpsecret = corpsecret if isinstance(corpsecret, str) else ""
-        self.agentid = agentid if isinstance(agentid, (int, str)) else ""
-        self.cache = cache if isinstance(cache, (diskcache.Cache, redis.Redis, redis.StrictRedis)) else None
+        self.base_url = base_url[:-1] if base_url.endswith("/") else base_url
+        self.corpid = corpid
+        self.corpsecret = corpsecret
+        self.agentid = agentid
+        self.cache = cache
         self.access_token = ""
 
-    def _default_response_handler(self, response: Response = None):
-        """
-        default response handler
-        :param response: requests.Response instance
-        :return:
-        """
-        if isinstance(response, Response) and response.status_code == 200:
-            json_addict = Dict(response.json())
-            if Draft202012Validator({
-                "type": "object",
-                "properties": {
-                    "errcode": {
-                        "oneOf": [
-                            {"type": "integer", "const": 0},
-                            {"type": "string", "const": "0"},
-                        ]
-                    }
-                },
-                "required": ["errcode"],
-            }).is_valid(json_addict):
-                return json_addict, response
-        return False, response
+    def request_with_token(self, response_handler: Callable = ResponseHandler.default_handler, **kwargs):
+        kwargs = Dict(kwargs)
+        kwargs.setdefault("method", "POST")
+        kwargs.setdefault("url", f"{self.base_url}{kwargs.get('url', '')}")
+        kwargs.params.setdefault("access_token", self.access_token)
+        return py3_requests.request(**kwargs.to_dict())
 
     def get_api_domain_ip(
             self,
-            method: str = "GET",
-            url: str = "/cgi-bin/get_api_domain_ip",
             **kwargs
     ):
         """
@@ -81,23 +129,19 @@ class Server:
         :param kwargs: requests.request kwargs
         :return:
         """
-        method = method if isinstance(method, str) else "GET"
-        url = url if isinstance(url, str) else "/cgi-bin/get_api_domain_ip"
-        if not url.startswith("http"):
-            if not url.startswith("/"):
-                url = f"/{url}"
-            url = f"{self.base_url}{url}"
-        params = kwargs.get("params", {})
-        params.setdefault("access_token", self.access_token)
-        kwargs["params"] = params
-        response = requests.request(method=method, url=url, **kwargs)
-        return self._default_response_handler(response)
+        kwargs = Dict(kwargs)
+        kwargs.setdefault("method", "GET")
+        kwargs.setdefault("url", UrlSettings.GET_API_DOMAIN_IP_URL)
+        result = self.request_with_token(**kwargs.to_dict());
+        if Draft202012Validator(JsonSchemaSettings.GET_API_DOMAIN_IP_SCHEMA).is_valid(result):
+            return result.get("ip_list", None)
+        return None
 
     def gettoken_with_cache(
             self,
-            expire: Union[float, int, timedelta] = None,
-            gettoken_kwargs: dict = None,
-            get_api_domain_ip_kwargs: dict = None
+            expire: Union[float, int, timedelta] = 7100,
+            gettoken_kwargs: dict = {},
+            get_api_domain_ip_kwargs: dict = {}
     ):
         """
         access token with cache
@@ -106,13 +150,12 @@ class Server:
         :param get_api_domain_ip_kwargs: self.get_api_domain_ip kwargs
         :return:
         """
-        gettoken_kwargs = gettoken_kwargs if isinstance(gettoken_kwargs, dict) else {}
-        get_api_domain_ip_kwargs = get_api_domain_ip_kwargs if isinstance(get_api_domain_ip_kwargs, dict) else {}
         cache_key = f"py3_workwx_access_token_{self.agentid}"
         if isinstance(self.cache, (diskcache.Cache, redis.Redis, redis.StrictRedis)):
             self.access_token = self.cache.get(cache_key)
-        api_domain_ip, _ = self.get_api_domain_ip(**get_api_domain_ip_kwargs)
-        if not isinstance(api_domain_ip, dict) or not len(api_domain_ip.get("ip_list")):
+        if Draft202012Validator(JsonSchemaSettings.GET_API_DOMAIN_IP_SCHEMA).is_valid(
+                self.get_api_domain_ip(**get_api_domain_ip_kwargs)
+        ):
             self.gettoken(**gettoken_kwargs)
             if isinstance(self.access_token, str) and len(self.access_token):
                 if isinstance(self.cache, diskcache.Cache):
@@ -127,13 +170,10 @@ class Server:
                         value=self.access_token,
                         time=expire or timedelta(seconds=7100),
                     )
-
         return self
 
     def gettoken(
             self,
-            method: str = "GET",
-            url: str = "/cgi-bin/gettoken",
             **kwargs
     ):
         """
@@ -145,109 +185,58 @@ class Server:
         :param kwargs:
         :return:
         """
-        method = method if isinstance(method, str) else "GET"
-        url = url if isinstance(url, str) else "/cgi-bin/gettoken"
-        if not url.startswith("http"):
-            if not url.startswith("/"):
-                url = f"/{url}"
-            url = f"{self.base_url}{url}"
-        params = kwargs.get("params", {})
-        params.setdefault("corpid", self.corpid)
-        params.setdefault("corpsecret", self.corpsecret)
-        kwargs["params"] = params
-        response = requests.request(method=method, url=url, **kwargs)
-        result, _ = self._default_response_handler(response)
-        if Draft202012Validator({
-            "type": "object",
-            "properties": {
-                "access_token": {"type": "string", "minLength": 1},
-            },
-            "required": ["access_token"]
-        }).is_valid(result):
+        kwargs = Dict(kwargs)
+        kwargs.setdefault("response_handler", ResponseHandler.default_handler)
+        kwargs.setdefault("method", "GET")
+        kwargs.setdefault("url", UrlSettings.GETTOKEN_URL)
+        kwargs.params.setdefault("corpid", self.corpid)
+        kwargs.params.setdefault("corpsecret", self.corpsecret)
+        result = py3_requests.request(
+            **kwargs.to_dict(),
+        )
+        if Draft202012Validator(JsonSchemaSettings.GETTOKEN_SCHEMA).is_valid(result):
             self.access_token = result.get("access_token", None)
         return self
 
     def message_send(
             self,
-            method: str = "POST",
-            url: str = "/cgi-bin/message/send",
             **kwargs
     ):
         """
         message send
 
         @see https://developer.work.weixin.qq.com/document/path/90236
-        :param method:
-        :param url:
-        :param json_data:
         :param kwargs:
         :return:
         """
-        method = method if isinstance(method, str) else "POST"
-        url = url if isinstance(url, str) else "/cgi-bin/message/send"
-        if not url.startswith("http"):
-            if not url.startswith("/"):
-                url = f"/{url}"
-            url = f"{self.base_url}{url}"
-        params = kwargs.get("params", {})
-        params.setdefault("access_token", self.access_token)
-        kwargs["params"] = params
-        response = requests.request(
-            method=method,
-            url=url,
-            **kwargs
-        )
-        return self._default_response_handler(response)
+        kwargs = Dict(kwargs)
+        kwargs.setdefault("response_handler", ResponseHandler.default_handler)
+        kwargs.setdefault("method", "POST")
+        kwargs.setdefault("url", UrlSettings.MESSAGE_SEND_URL)
+        return self.request_with_token(**kwargs.to_dict())
 
     def media_upload(
             self,
-            types: str = None,
-            method: str = "POST",
-            url: str = "/cgi-bin/media/upload",
             **kwargs
     ):
         """
         media upload
 
         @see https://developer.work.weixin.qq.com/document/path/90253
-        :param types:
-        :param method:
-        :param url:
         :param kwargs:
         :return:
         """
-        types = types if types in ["file", "image", "voice", "video"] else "file"
-        method = method if isinstance(method, str) else "POST"
-        url = url if isinstance(url, str) else "/cgi-bin/media/upload"
-        if not url.startswith("http"):
-            if not url.startswith("/"):
-                url = f"/{url}"
-            url = f"{self.base_url}{url}"
-
-        params = kwargs.get("params", {})
-        params.setdefault("access_token", self.access_token)
-        params.setdefault("type", types)
-        kwargs["params"] = params
-        response = requests.request(
-            method=method,
-            url=url,
-            **kwargs
-        )
-        result, _ = self._default_response_handler(response)
-        if Draft202012Validator({
-            "type": "object",
-            "properties": {
-                "media_id": {"type": "string", "minLength": 1},
-            },
-            "required": ["media_id"]
-        }).is_valid(result):
-            return result.get("media_id", None), response
-        return result, response
+        kwargs = Dict(kwargs)
+        kwargs.setdefault("response_handler", ResponseHandler.default_handler)
+        kwargs.setdefault("method", "POST")
+        kwargs.setdefault("url", UrlSettings.MEDIA_UPLOAD_URL)
+        result = self.request_with_token(**kwargs.to_dict())
+        if Draft202012Validator(JsonSchemaSettings.MEDIA_UPLOAD_SCHEMA).is_valid(result):
+            return result.get("media_id", None)
+        return None
 
     def uploadimg(
             self,
-            method: str = "POST",
-            url: str = "/cgi-bin/media/uploadimg",
             **kwargs
     ):
         """
@@ -260,27 +249,11 @@ class Server:
         :param kwargs:
         :return:
         """
-        method = method if isinstance(method, str) else "POST"
-        url = url if isinstance(url, str) else "/cgi-bin/media/uploadimg"
-        if not url.startswith("http"):
-            if not url.startswith("/"):
-                url = f"/{url}"
-            url = f"{self.base_url}{url}"
-        params = kwargs.get("params", {})
-        params.setdefault("access_token", self.access_token)
-        kwargs["params"] = params
-        response = requests.request(
-            method=method,
-            url=url,
-            **kwargs
-        )
-        result, _ = self._default_response_handler(response)
-        if Draft202012Validator({
-            "type": "object",
-            "properties": {
-                "url": {"type": "string", "minLength": 1},
-            },
-            "required": ["url"]
-        }).is_valid(result):
-            return result.get("url", None), response
-        return result, response
+        kwargs = Dict(kwargs)
+        kwargs.setdefault("response_handler", ResponseHandler.default_handler)
+        kwargs.setdefault("method", "POST")
+        kwargs.setdefault("url", UrlSettings.MEDIA_UPLOAD_URL)
+        result = self.request_with_token(**kwargs.to_dict())
+        if Draft202012Validator(JsonSchemaSettings.MEDIA_UPLOADIMG_SCHEMA).is_valid(result):
+            return result.get("url", None)
+        return None
