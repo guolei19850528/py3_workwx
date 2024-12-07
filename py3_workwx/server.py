@@ -111,7 +111,9 @@ class Server:
     def request_with_token(self, response_handler: Callable = ResponseHandler.default_handler, **kwargs):
         kwargs = Dict(kwargs)
         kwargs.setdefault("method", "POST")
-        kwargs.setdefault("url", f"{self.base_url}{kwargs.get('url', '')}")
+        kwargs.setdefault("url", "")
+        if not kwargs.get("url", "").startswith("http"):
+            kwargs["url"] = self.base_url + kwargs["url"]
         kwargs.params.setdefault("access_token", self.access_token)
         return py3_requests.request(**kwargs.to_dict())
 
@@ -187,7 +189,9 @@ class Server:
         kwargs = Dict(kwargs)
         kwargs.setdefault("response_handler", ResponseHandler.default_handler)
         kwargs.setdefault("method", "GET")
-        kwargs.setdefault("url", f"{self.base_url}{RequestUrl.GETTOKEN_URL}")
+        kwargs.setdefault("url", f"{RequestUrl.GETTOKEN_URL}")
+        if not kwargs.get("url", "").startswith("http"):
+            kwargs["url"] = self.base_url + kwargs["url"]
         kwargs.params.setdefault("corpid", self.corpid)
         kwargs.params.setdefault("corpsecret", self.corpsecret)
         result = py3_requests.request(
@@ -212,6 +216,8 @@ class Server:
         kwargs.setdefault("response_handler", ResponseHandler.default_handler)
         kwargs.setdefault("method", "POST")
         kwargs.setdefault("url", RequestUrl.MESSAGE_SEND_URL)
+        if not kwargs.get("url", "").startswith("http"):
+            kwargs["url"] = self.base_url + kwargs["url"]
         return self.request_with_token(**kwargs.to_dict())
 
     def media_upload(
@@ -229,6 +235,8 @@ class Server:
         kwargs.setdefault("response_handler", ResponseHandler.default_handler)
         kwargs.setdefault("method", "POST")
         kwargs.setdefault("url", RequestUrl.MEDIA_UPLOAD_URL)
+        if not kwargs.get("url", "").startswith("http"):
+            kwargs["url"] = self.base_url + kwargs["url"]
         result = self.request_with_token(**kwargs.to_dict())
         if Draft202012Validator(ValidatorJsonSchema.MEDIA_UPLOAD_SCHEMA).is_valid(result):
             return result.get("media_id", None)
@@ -252,6 +260,8 @@ class Server:
         kwargs.setdefault("response_handler", ResponseHandler.default_handler)
         kwargs.setdefault("method", "POST")
         kwargs.setdefault("url", RequestUrl.MEDIA_UPLOADIMG_URL)
+        if not kwargs.get("url", "").startswith("http"):
+            kwargs["url"] = self.base_url + kwargs["url"]
         result = self.request_with_token(**kwargs.to_dict())
         if Draft202012Validator(ValidatorJsonSchema.MEDIA_UPLOADIMG_SCHEMA).is_valid(result):
             return result.get("url", None)

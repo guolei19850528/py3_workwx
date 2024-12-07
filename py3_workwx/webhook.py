@@ -89,23 +89,19 @@ class Webhook:
 
     def send(
             self,
-            response_handler: Callable = ResponseHandler.normal_handler,
-            method: str = "POST",
-            url: str = RequestUrl.SEND_URL,
             **kwargs
     ):
         """
         webhook send
-        :param response_handler: py3_requests.request.response_handler
-        :param method: py3_requests.request method
-        :param url: py3_requests.request url
         :param kwargs: py3_requests.request kwargs
         :return:
         """
         kwargs = Dict(kwargs)
         kwargs.setdefault("method", "POST")
         kwargs.setdefault("response_handler", ResponseHandler.normal_handler)
-        kwargs.setdefault("url", f"{self.base_url}{url}")
+        kwargs.setdefault("url", f"{RequestUrl.SEND_URL}")
+        if not kwargs.get("url", "").startswith("http"):
+            kwargs["url"] = self.base_url + kwargs["url"]
         kwargs.setdefault("params", Dict())
         kwargs.params.setdefault("key", self.key)
         return py3_requests.request(
@@ -289,7 +285,9 @@ class Webhook:
         kwargs.params.setdefault("key", self.key)
         kwargs.params.setdefault("type", types)
         kwargs.setdefault("method", "POST")
-        kwargs.setdefault("url", f"{self.base_url}{RequestUrl.UPLOAD_MEDIA_URL}")
+        kwargs.setdefault("url", f"{RequestUrl.UPLOAD_MEDIA_URL}")
+        if not kwargs.get("url", "").startswith("http"):
+            kwargs["url"] = self.base_url + kwargs["url"]
         return py3_requests.request(
             response_handler=response_handler,
             files=files,
