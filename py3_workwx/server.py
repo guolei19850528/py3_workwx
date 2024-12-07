@@ -18,6 +18,7 @@ from addict import Dict
 from jsonschema.validators import Draft202012Validator
 from requests import Response
 
+
 class RequestUrl:
     BASE_URL = "https://qyapi.weixin.qq.com/"
     GETTOKEN_URL = "/cgi-bin/gettoken"
@@ -83,8 +84,6 @@ class ResponseHandler:
                 return json_addict
             return None
         raise Exception(f"Response Handler Error {response.status_code}|{response.text}")
-
-
 
 
 class Server:
@@ -188,7 +187,7 @@ class Server:
         kwargs = Dict(kwargs)
         kwargs.setdefault("response_handler", ResponseHandler.default_handler)
         kwargs.setdefault("method", "GET")
-        kwargs.setdefault("url", f"{RequestUrl.BASE_URL}{RequestUrl.GETTOKEN_URL}")
+        kwargs.setdefault("url", f"{self.base_url}{RequestUrl.GETTOKEN_URL}")
         kwargs.params.setdefault("corpid", self.corpid)
         kwargs.params.setdefault("corpsecret", self.corpsecret)
         result = py3_requests.request(
@@ -252,7 +251,7 @@ class Server:
         kwargs = Dict(kwargs)
         kwargs.setdefault("response_handler", ResponseHandler.default_handler)
         kwargs.setdefault("method", "POST")
-        kwargs.setdefault("url", RequestUrl.MEDIA_UPLOAD_URL)
+        kwargs.setdefault("url", RequestUrl.MEDIA_UPLOADIMG_URL)
         result = self.request_with_token(**kwargs.to_dict())
         if Draft202012Validator(ValidatorJsonSchema.MEDIA_UPLOADIMG_SCHEMA).is_valid(result):
             return result.get("url", None)

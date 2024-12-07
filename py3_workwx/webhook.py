@@ -106,12 +106,7 @@ class Webhook:
         kwargs.setdefault("method", "POST")
         kwargs.setdefault("response_handler", ResponseHandler.normal_handler)
         kwargs.setdefault("url", f"{self.base_url}{url}")
-        kwargs.params = Dict({
-            **{
-                "key": self.key,
-            },
-            **kwargs.params,
-        })
+        kwargs.params.setdefault("key", self.key)
         return py3_requests.request(
             **kwargs.to_dict()
         )
@@ -136,17 +131,10 @@ class Webhook:
         kwargs = Dict(kwargs)
         kwargs.setdefault("response_handler", ResponseHandler.normal_handler)
         kwargs.setdefault("method", "POST")
-        kwargs.json = Dict({
-            **{
-                "msgtype": "text",
-                "text": {
-                    "content": f"{content}",
-                    "mentioned_list": self.mentioned_list + mentioned_list,
-                    "mentioned_mobile_list": self.mentioned_mobile_list + mentioned_mobile_list,
-                }
-            },
-            **kwargs.json,
-        })
+        kwargs.json.setdefault("msgtype", "text")
+        kwargs.json.text.setdefault("content", content)
+        kwargs.json.text.setdefault("mentioned_list", self.mentioned_list + mentioned_list)
+        kwargs.json.text.setdefault("mentioned_mobile_list", self.mentioned_mobile_list + mentioned_mobile_list)
         return self.send(**kwargs.to_dict())
 
     def send_markdown(
@@ -165,16 +153,8 @@ class Webhook:
         kwargs = Dict(kwargs)
         kwargs.setdefault("response_handler", ResponseHandler.normal_handler)
         kwargs.setdefault("method", "POST")
-
-        kwargs.json = Dict({
-            **{
-                "msgtype": "markdown",
-                "markdown": {
-                    "content": f"{content}",
-                }
-            },
-            **kwargs.json,
-        })
+        kwargs.json.setdefault("msgtype", "markdown")
+        kwargs.json.markdown.setdefault("content", content)
         return self.send(**kwargs.to_dict())
 
     def send_image(
@@ -193,17 +173,9 @@ class Webhook:
         kwargs = Dict(kwargs)
         kwargs.setdefault("response_handler", ResponseHandler.normal_handler)
         kwargs.setdefault("method", "POST")
-
-        kwargs.json = Dict({
-            **{
-                "msgtype": "image",
-                "image": {
-                    "base64": f"{image_base64}",
-                    "md5": "MD5",
-                }
-            },
-            **kwargs.json,
-        })
+        kwargs.json.setdefault("msgtype", "image")
+        kwargs.json.image.setdefault("base64", image_base64)
+        kwargs.json.image.setdefault("md5", "MD5")
         return self.send(**kwargs.to_dict())
 
     def send_news(
@@ -222,16 +194,8 @@ class Webhook:
         kwargs = Dict(kwargs)
         kwargs.setdefault("response_handler", ResponseHandler.normal_handler)
         kwargs.setdefault("method", "POST")
-
-        kwargs.json = Dict({
-            **{
-                "msgtype": "news",
-                "news": {
-                    "articles": articles,
-                }
-            },
-            **kwargs.json,
-        })
+        kwargs.json.setdefault("msgtype", "news")
+        kwargs.json.news.setdefault("articles", articles)
         return self.send(**kwargs.to_dict())
 
     def send_file(
@@ -250,16 +214,8 @@ class Webhook:
         kwargs = Dict(kwargs)
         kwargs.setdefault("response_handler", ResponseHandler.normal_handler)
         kwargs.setdefault("method", "POST")
-
-        kwargs.json = Dict({
-            **{
-                "msgtype": "file",
-                "file": {
-                    "media_id": f"{media_id}"
-                }
-            },
-            **kwargs.json,
-        })
+        kwargs.json.setdefault("msgtype", "file")
+        kwargs.json.file.setdefault("media_id", media_id)
         return self.send(**kwargs.to_dict())
 
     def send_voice(
@@ -278,16 +234,8 @@ class Webhook:
         kwargs = Dict(kwargs)
         kwargs.setdefault("response_handler", ResponseHandler.normal_handler)
         kwargs.setdefault("method", "POST")
-
-        kwargs.json = Dict({
-            **{
-                "msgtype": "voice",
-                "voice": {
-                    "media_id": f"{media_id}"
-                }
-            },
-            **kwargs.json,
-        })
+        kwargs.json.setdefault("msgtype", "voice")
+        kwargs.json.voice.setdefault("media_id", media_id)
         return self.send(**kwargs.to_dict())
 
     def send_template_card(
@@ -306,14 +254,8 @@ class Webhook:
         kwargs = Dict(kwargs)
         kwargs.setdefault("response_handler", ResponseHandler.normal_handler)
         kwargs.setdefault("method", "POST")
-
-        kwargs.json = Dict({
-            **{
-                "msgtype": "template_card",
-                "template_card": template_card,
-            },
-            **kwargs.json,
-        })
+        kwargs.json.setdefault("msgtype", "template_card")
+        kwargs.json.template_card.setdefault("template_card", template_card)
         return self.send(**kwargs.to_dict())
 
     def upload_media(
