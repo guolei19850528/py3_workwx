@@ -24,14 +24,14 @@ pip install py3-workwx
 from py3_workwx.webhook import Webhook
 
 webhook = Webhook(key="<key>")
-state, _ = webhook.send_text(
+state = webhook.send_text(
     content="<message content>",
     mentioned_list=[],
     mentioned_mobile_list=[]
 )
 if state:
     print("successful")
-media_id, _ = webhook.upload_media(
+media_id = webhook.upload_media(
     files={
         "file": (
             "<display file name>",
@@ -40,7 +40,7 @@ media_id, _ = webhook.upload_media(
     }
 )
 if media_id:
-    state, _ = webhook.send_file(media_id=media_id)
+    state = webhook.send_file(media_id=media_id)
 if state:
     print("successful")
 ```
@@ -64,7 +64,7 @@ server = Server(
     cache=cache
 )
 
-state, _ = server.gettoken_with_cache().message_send(
+state = server.gettoken_with_cache().message_send(
     json={
         "touser": "user",
         "msgtype": "text",
@@ -76,7 +76,7 @@ state, _ = server.gettoken_with_cache().message_send(
 )
 if state:
     print("successful")
-media_id, _ = server.media_upload(files={
+media_id = server.media_upload(files={
     "file": (
         "README.md",
         open(os.path.join(os.getcwd(), "README.md"), "rb")

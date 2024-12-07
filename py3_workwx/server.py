@@ -9,12 +9,11 @@ Github：https://github.com/guolei19850528/py3_workwx
 =================================================
 """
 from datetime import timedelta
-from typing import Union, Any, Callable
+from typing import Union, Callable
 
 import diskcache
 import py3_requests
 import redis
-import requests
 from addict import Dict
 from jsonschema.validators import Draft202012Validator
 from requests import Response
