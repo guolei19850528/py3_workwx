@@ -264,9 +264,6 @@ class Webhook:
 
     def upload_media(
             self,
-            response_handler: Callable = ResponseHandler.normal_handler,
-            types: str = "file",
-            files: Any = None,
             **kwargs
     ):
         """
@@ -279,17 +276,15 @@ class Webhook:
         :param kwargs: py3_requests.request kwargs
         :return:
         """
-        types = types.lower() if types.lower() in ["file", "voice"] else "file"
         kwargs = Dict(kwargs)
+        kwargs.setdefault("response_handler", ResponseHandler.normal_handler)
         kwargs.setdefault("params", Dict({}))
         kwargs.params.setdefault("key", self.key)
-        kwargs.params.setdefault("type", types)
+        kwargs.params.setdefault("type", "file")
         kwargs.setdefault("method", "POST")
         kwargs.setdefault("url", f"{RequestUrl.UPLOAD_MEDIA_URL}")
         if not kwargs.get("url", "").startswith("http"):
             kwargs["url"] = self.base_url + kwargs["url"]
         return py3_requests.request(
-            response_handler=response_handler,
-            files=files,
             **kwargs.to_dict(),
         )
