@@ -12,22 +12,19 @@ from py3_workwx.webhook import Webhook
 class MyTestCase(unittest.TestCase):
     def test_webhook(self):
         webhook = Webhook(key="9306875b-67b4-4445-99b9-6131f06a2555")
-        state = webhook.send_text(
-            content=f"message content {datetime.now()}",
-            mentioned_list=[],
-            mentioned_mobile_list=[]
+        state = webhook.send(
+            json=webhook.send_text_formatter("测试信息")
         )
         media_id = webhook.upload_media(
             files={
-                "file": (
-                    "README.md",
-                    open(os.path.join(os.getcwd(), "README.md"), "rb")
-                )
+                "file": ("README.md", open("README.md", "rb")),
             }
         )
-        print(media_id)
         if media_id:
-            webhook.send_file(media_id=media_id)
+            state = state = webhook.send(
+                json=webhook.send_file_formatter(media_id)
+            )
+            print(state)
         self.assertTrue(True, "OK")  # add assertion here
 
     def test_server(self):

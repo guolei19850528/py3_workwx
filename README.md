@@ -4,7 +4,7 @@
 
 The Python3 Work Weixin Library Developed By Guolei
 
-# Official Documentation
+# Documentation
 
 ## [Webhook API](https://developer.work.weixin.qq.com/document/path/91770)
 
@@ -24,25 +24,24 @@ pip install py3-workwx
 from py3_workwx.webhook import Webhook
 
 webhook = Webhook(key="<key>")
-state = webhook.send_text(
-    content="<message content>",
-    mentioned_list=[],
-    mentioned_mobile_list=[]
+state = webhook.send(
+    json=webhook.send_text_formatter("test message")
 )
 if state:
-    print("successful")
+    print("send successful")
 media_id = webhook.upload_media(
     files={
-        "file": (
-            "<display file name>",
-            open("<file path>", "rb")
-        )
+        "file": ("README.md", open("README.md", "rb")),
     }
 )
 if media_id:
-    state = webhook.send_file(media_id=media_id)
-if state:
-    print("successful")
+    print("send successful")
+if media_id:
+    state = state = webhook.send(
+        json=webhook.send_file_formatter(media_id)
+    )
+    if state:
+        print("send successful")
 ```
 
 ## Server API
