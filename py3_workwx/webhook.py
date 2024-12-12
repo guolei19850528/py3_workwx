@@ -15,10 +15,10 @@ from jsonschema.validators import Draft202012Validator
 from requests import Response
 import py3_requests
 
-request_urls=Dict()
-request_urls.base="https://qyapi.weixin.qq.com/"
-request_urls.send="/cgi-bin/webhook/send"
-request_urls.upload_media="/cgi-bin/webhook/upload_media"
+request_urls = Dict()
+request_urls.base = "https://qyapi.weixin.qq.com/"
+request_urls.send = "/cgi-bin/webhook/send"
+request_urls.upload_media = "/cgi-bin/webhook/upload_media"
 
 validator_json_schemas = Dict()
 validator_json_schemas.normal = Dict({
@@ -69,8 +69,11 @@ class Webhook:
         self.mentioned_list = mentioned_list
         self.mentioned_mobile_list = mentioned_mobile_list
 
-    def send_text_formatter(self, content: str = "", mentioned_list: Union[tuple, list] = [],
-                            mentioned_mobile_list: Union[tuple, list] = []):
+    def send_text_formatter(
+            self, content: str = "",
+            mentioned_list: Union[tuple, list] = [],
+            mentioned_mobile_list: Union[tuple, list] = []
+    ):
         """
         @see https://developer.work.weixin.qq.com/document/path/91770#%E6%96%87%E6%9C%AC%E7%B1%BB%E5%9E%8B
         :param content:
