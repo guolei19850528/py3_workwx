@@ -18,8 +18,16 @@ from addict import Dict
 from jsonschema.validators import Draft202012Validator
 from requests import Response
 
-validator_json_schema = Dict()
-validator_json_schema.normal = Dict({
+request_urls = Dict()
+request_urls.base = "https://qyapi.weixin.qq.com/"
+request_urls.get_api_domain_ip = "/cgi-bin/get_api_domain_ip"
+request_urls.gettoken = "/cgi-bin/gettoken"
+request_urls.message_send = "/cgi-bin/message/send"
+request_urls.media_upload = "/cgi-bin/media/upload"
+request_urls.media_uploadimg = "/cgi-bin/media/uploadimg"
+
+validator_json_schemas = Dict()
+validator_json_schemas.normal = Dict({
     "type": "object",
     "properties": {
         "errcode": {
@@ -31,31 +39,28 @@ validator_json_schema.normal = Dict({
     },
     "required": ["errcode"],
 })
-validator_json_schema.gettoken = Dict({
+validator_json_schemas.gettoken = Dict({
     "type": "object",
     "properties": {
         "access_token": {"type": "string", "minLength": 1},
     },
     "required": ["access_token"],
 })
-
-validator_json_schema.get_api_domain_ip = Dict({
+validator_json_schemas.get_api_domain_ip = Dict({
     "type": "object",
     "properties": {
         "ip_list": {"type": "array", "minItem": 1},
     },
     "required": ["ip_list"],
 })
-
-validator_json_schema.media_upload = Dict({
+validator_json_schemas.media_upload = Dict({
     "type": "object",
     "properties": {
         "media_id": {"type": "string", "minLength": 1},
     },
     "required": ["media_id"],
 })
-
-validator_json_schema.media_uploadimg = Dict({
+validator_json_schemas.media_uploadimg = Dict({
     "type": "object",
     "properties": {
         "url": {"type": "string", "minLength": 1},
@@ -67,7 +72,7 @@ validator_json_schema.media_uploadimg = Dict({
 def normal_response_handler(response: Response = None):
     if isinstance(response, Response) and response.status_code == 200:
         json_addict = Dict(response.json())
-        if Draft202012Validator(validator_json_schema.normal.to_dict()).is_valid(instance=json_addict):
+        if Draft202012Validator(validator_json_schemas.normal.to_dict()).is_valid(instance=json_addict):
             return json_addict
         return None
     raise Exception(f"response handler error {response.status_code}|{response.text}")
@@ -76,7 +81,7 @@ def normal_response_handler(response: Response = None):
 class Server:
     def __init__(
             self,
-            base_url: str = "https://qyapi.weixin.qq.com/",
+            base_url: str = request_urls.base,
             corpid: str = "",
             corpsecret: str = "",
             agentid: Union[int, str] = "",
@@ -108,9 +113,9 @@ class Server:
         """
         kwargs = Dict(kwargs)
         kwargs.setdefault("method", "GET")
-        kwargs.setdefault("url", f"/cgi-bin/get_api_domain_ip")
+        kwargs.setdefault("url", request_urls.get_api_domain_ip)
         result = self.request_with_token(**kwargs.to_dict());
-        if Draft202012Validator(validator_json_schema.get_api_domain_ip).is_valid(result):
+        if Draft202012Validator(validator_json_schemas.get_api_domain_ip).is_valid(result):
             return result.get("ip_list", None)
         return None
 
@@ -132,7 +137,7 @@ class Server:
         cache_key = f"py3_workwx_access_token_{self.agentid}"
         if isinstance(self.cache, (diskcache.Cache, redis.Redis, redis.StrictRedis)):
             self.access_token = self.cache.get(cache_key)
-        if not Draft202012Validator(validator_json_schema.get_api_domain_ip).is_valid(
+        if not Draft202012Validator(validator_json_schemas.get_api_domain_ip).is_valid(
                 self.get_api_domain_ip(**get_api_domain_ip_kwargs.to_dict())
         ):
             self.gettoken(**gettoken_kwargs.to_dict())
@@ -163,7 +168,7 @@ class Server:
         kwargs = Dict(kwargs)
         kwargs.setdefault("response_handler", normal_response_handler)
         kwargs.setdefault("method", "GET")
-        kwargs.setdefault("url", f"/cgi-bin/gettoken")
+        kwargs.setdefault("url", request_urls.gettoken)
         if not kwargs.get("url", "").startswith("http"):
             kwargs["url"] = self.base_url + kwargs["url"]
         kwargs.params.setdefault("corpid", self.corpid)
@@ -171,7 +176,7 @@ class Server:
         result = py3_requests.request(
             **kwargs.to_dict(),
         )
-        if Draft202012Validator(validator_json_schema.gettoken).is_valid(result):
+        if Draft202012Validator(validator_json_schemas.gettoken).is_valid(result):
             self.access_token = result.get("access_token", None)
 
         return self
@@ -186,7 +191,7 @@ class Server:
         kwargs = Dict(kwargs)
         kwargs.setdefault("response_handler", normal_response_handler)
         kwargs.setdefault("method", "POST")
-        kwargs.setdefault("url", f"/cgi-bin/message/send")
+        kwargs.setdefault("url", request_urls.message_send)
         if not kwargs.get("url", "").startswith("http"):
             kwargs["url"] = self.base_url + kwargs["url"]
         return self.request_with_token(**kwargs.to_dict())
@@ -201,14 +206,14 @@ class Server:
         kwargs = Dict(kwargs)
         kwargs.setdefault("response_handler", normal_response_handler)
         kwargs.setdefault("method", "POST")
-        kwargs.setdefault("url", f"/cgi-bin/media/upload")
+        kwargs.setdefault("url", request_urls.media_upload)
         if not kwargs.get("url", "").startswith("http"):
             kwargs["url"] = self.base_url + kwargs["url"]
         kwargs.setdefault("params", Dict())
         types = "file" if types.lower() not in ["file", "image", "voice", "video"] else types
         kwargs.params.setdefault("type", types)
         result = self.request_with_token(**kwargs.to_dict())
-        if Draft202012Validator(validator_json_schema.media_upload).is_valid(result):
+        if Draft202012Validator(validator_json_schemas.media_upload).is_valid(result):
             return result.get("media_id", None)
         return None
 
@@ -221,10 +226,10 @@ class Server:
         kwargs = Dict(kwargs)
         kwargs.setdefault("response_handler", normal_response_handler)
         kwargs.setdefault("method", "POST")
-        kwargs.setdefault("url", f"/cgi-bin/media/uploadimg")
+        kwargs.setdefault("url", request_urls.meida_uploadimg)
         if not kwargs.get("url", "").startswith("http"):
             kwargs["url"] = self.base_url + kwargs["url"]
         result = self.request_with_token(**kwargs.to_dict())
-        if Draft202012Validator(validator_json_schema.media_uploadimg).is_valid(result):
+        if Draft202012Validator(validator_json_schemas.media_uploadimg).is_valid(result):
             return result.get("url", None)
         return None
