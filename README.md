@@ -1,5 +1,3 @@
-# Read this in other languages: [English](https://github.com/guolei19850528/py3_workwx/blob/main/README.md), [中文](https://github.com/guolei19850528/py3_workwx/blob/main/README_zh.md)
-
 # py3-workwx
 
 The Python3 Work Weixin Library Developed By Guolei
