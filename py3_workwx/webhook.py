@@ -8,6 +8,7 @@ Email：[174000902@qq.com]
 Github：https://github.com/guolei19850528/py_usefully
 =================================================
 """
+from enum import Enum
 from typing import Union
 
 from addict import Dict
@@ -15,33 +16,35 @@ from jsonschema.validators import Draft202012Validator
 from requests import Response
 import py3_requests
 
-request_urls = Dict()
-request_urls.base = "https://qyapi.weixin.qq.com/"
-request_urls.send = "/cgi-bin/webhook/send"
-request_urls.upload_media = "/cgi-bin/webhook/upload_media"
 
-validator_json_schemas = Dict()
-validator_json_schemas.normal = Dict({
-    "type": "object",
-    "properties": {
-        "errcode": {
-            "oneOf": [
-                {"type": "integer", "const": 0},
-                {"type": "string", "const": "0"},
-            ]
-        }
-    },
-    "required": ["errcode"],
-})
+class RequestUrls(py3_requests.RequestUrl):
+    BASE = "https://qyapi.weixin.qq.com/"
+    SEND = "/cgi-bin/webhook/send"
+    UPLOAD_MEDIA = "/cgi-bin/webhook/upload_media"
 
 
-def normal_response_handler(response: Response = None):
-    if isinstance(response, Response) and response.status_code == 200:
-        json_addict = Dict(response.json())
-        if Draft202012Validator(validator_json_schemas.normal.to_dict()).is_valid(instance=json_addict):
+class ValidatorJsonSchemas(py3_requests.ValidatorJsonSchema):
+    SUCCESS = Dict({
+        "type": "object",
+        "properties": {
+            "errcode": {
+                "oneOf": [
+                    {"type": "integer", "const": 0},
+                    {"type": "string", "const": "0"},
+                ]
+            }
+        },
+        "required": ["errcode"],
+    })
+
+
+class ResponseHandler(py3_requests.ResponseHandler):
+    @staticmethod
+    def success(response: Response = None):
+        json_addict = ResponseHandler.status_code_200_json_addict(response=response)
+        if Draft202012Validator(ValidatorJsonSchemas.SUCCESS.to_dict()).is_valid(instance=json_addict):
             return json_addict.get("media_id", True)
         return None
-    raise Exception(f"response handler error {response.status_code}|{response.text}")
 
 
 class Webhook:
@@ -52,9 +55,13 @@ class Webhook:
     @see https://developer.work.weixin.qq.com/document/path/91770
     """
 
-    def __init__(self, base_url: str = request_urls.base, key: str = "",
-                 mentioned_list: Union[tuple, list] = [],
-                 mentioned_mobile_list: Union[tuple, list] = []):
+    def __init__(
+            self,
+            base_url: str = RequestUrls.BASE,
+            key: str = "",
+            mentioned_list: Union[tuple, list] = [],
+            mentioned_mobile_list: Union[tuple, list] = []
+    ):
         """
         企业微信 群机器人
 
@@ -175,8 +182,8 @@ class Webhook:
         """
         kwargs = Dict(kwargs)
         kwargs.setdefault("method", "POST")
-        kwargs.setdefault("response_handler", normal_response_handler)
-        kwargs.setdefault("url", request_urls.send)
+        kwargs.setdefault("response_handler", ResponseHandler.success)
+        kwargs.setdefault("url", RequestUrls.SEND)
         if not kwargs.get("url", "").startswith("http"):
             kwargs["url"] = self.base_url + kwargs["url"]
         kwargs.setdefault("params", Dict())
@@ -192,12 +199,12 @@ class Webhook:
         :return:
         """
         kwargs = Dict(kwargs)
-        kwargs.setdefault("response_handler", normal_response_handler)
+        kwargs.setdefault("response_handler", ResponseHandler.success)
         kwargs.setdefault("params", Dict({}))
         kwargs.params.setdefault("key", self.key)
         kwargs.params.setdefault("type", "file")
         kwargs.setdefault("method", "POST")
-        kwargs.setdefault("url", request_urls.upload_media)
+        kwargs.setdefault("url", RequestUrls.UPLOAD_MEDIA)
         if not kwargs.get("url", "").startswith("http"):
             kwargs["url"] = self.base_url + kwargs["url"]
         return py3_requests.request(

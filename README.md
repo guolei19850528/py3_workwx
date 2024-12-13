@@ -11,35 +11,41 @@ The Python3 Work Weixin Library Developed By Guolei
 # Installation
 
 ```shell
-pip install py3-workwx
+pip install py3-workwx==1.1.13
 ```
 
 # Example
 
-# Webhook
+## Webhook
 
 ```python
 from py3_workwx.webhook import Webhook
 
 webhook = Webhook(key="<key>")
+
 state = webhook.send(
-    json=webhook.send_text_formatter("test message")
+    json=webhook.send_text_formatter(f"测试信息")
 )
 if state:
-    print("send successful")
+    print("send message success")
+else:
+    print("send message failed")
 media_id = webhook.upload_media(
     files={
         "file": ("README.md", open("README.md", "rb")),
     }
 )
 if media_id:
-    print("send successful")
-if media_id:
-    state = state = webhook.send(
+    print("upload file success")
+    state = webhook.send(
         json=webhook.send_file_formatter(media_id)
     )
     if state:
-        print("send successful")
+        print("send file success")
+    else:
+        print("send file failed")
+else:
+    print("upload media failed")
 ```
 
 ## Server API
@@ -63,23 +69,26 @@ server = Server(
 
 state = server.gettoken_with_cache().message_send(
     json={
-        "touser": "user",
+        "touser": "your name",
         "msgtype": "text",
         "agentid": server.agentid,
         "text": {
-            "content": f"test message {datetime.now()}",
+            "content": f"测试信息",
         }
     }
 )
 if state:
-    print("successful")
-
+    print("send message success")
+else:
+    print("send message failed")
 media_id = server.media_upload(files={
     "file": (
         "README.md",
-        open(os.path.join(os.getcwd(), "README.md"), "rb")
+        open("README.md", "rb")
     )
 })
 if media_id:
-    print(media_id)
+    print("upload file success")
+else:
+    print("upload file failed")
 ```
