@@ -11,7 +11,7 @@ The Python3 Work Weixin Library Developed By Guolei
 # Installation
 
 ```shell
-pip install py3-workwx==1.1.13
+pip install py3-workwx
 ```
 
 # Example

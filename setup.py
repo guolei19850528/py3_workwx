@@ -17,7 +17,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 setup(
     name="py3-workwx",
-    version="1.1.13",
+    version="1.1.15",
     description="The Python3 Work Weixin Library Developed By Guolei",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -28,7 +28,7 @@ setup(
     keywors=["workwx", "work weixin", "企业微信", "群机器人", "服务端API", "webhook", "guolei", "郭磊"],
     packages=setuptools.find_packages('./'),
     install_requires=[
-        "py3-requests>=1.1.3",
+        "py3-requests",
         "addict",
         "retrying",
         "jsonschema",
