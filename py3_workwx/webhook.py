@@ -181,7 +181,7 @@ class Webhook:
         :return:
         """
         kwargs = Dict(kwargs)
-        kwargs.setdefault("method", "POST")
+        kwargs.setdefault("method", py3_requests.RequestMethod.POST)
         kwargs.setdefault("response_handler", ResponseHandler.success)
         kwargs.setdefault("url", RequestUrls.SEND)
         if not kwargs.get("url", "").startswith("http"):
@@ -200,13 +200,13 @@ class Webhook:
         """
         kwargs = Dict(kwargs)
         kwargs.setdefault("response_handler", ResponseHandler.success)
-        kwargs.setdefault("params", Dict({}))
-        kwargs.params.setdefault("key", self.key)
-        kwargs.params.setdefault("type", "file")
-        kwargs.setdefault("method", "POST")
+        kwargs.setdefault("method", py3_requests.RequestMethod.POST)
         kwargs.setdefault("url", RequestUrls.UPLOAD_MEDIA)
         if not kwargs.get("url", "").startswith("http"):
             kwargs["url"] = self.base_url + kwargs["url"]
+        kwargs.setdefault("params", Dict())
+        kwargs.params.setdefault("key", self.key)
+        kwargs.params.setdefault("type", "file")
         return py3_requests.request(
             **kwargs.to_dict()
         )

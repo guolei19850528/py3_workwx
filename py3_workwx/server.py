@@ -102,7 +102,7 @@ class Server:
     def request_with_token(self, **kwargs):
         kwargs = Dict(kwargs)
         kwargs.setdefault("response_handler", ResponseHandler.success)
-        kwargs.setdefault("method", "POST")
+        kwargs.setdefault("method", py3_requests.RequestMethod.POST)
         kwargs.setdefault("url", "")
         if not kwargs.get("url", "").startswith("http"):
             kwargs["url"] = self.base_url + kwargs["url"]
@@ -118,7 +118,7 @@ class Server:
         :return:
         """
         kwargs = Dict(kwargs)
-        kwargs.setdefault("method", "GET")
+        kwargs.setdefault("method", py3_requests.RequestMethod.GET)
         kwargs.setdefault("url", RequestUrl.GET_API_DOMAIN_IP)
         result = self.request_with_token(**kwargs.to_dict());
         if Draft202012Validator(ValidatorJsonSchema.GET_API_DOMAIN_IP).is_valid(result):
@@ -173,7 +173,7 @@ class Server:
         """
         kwargs = Dict(kwargs)
         kwargs.setdefault("response_handler", ResponseHandler.success)
-        kwargs.setdefault("method", "GET")
+        kwargs.setdefault("method", py3_requests.RequestMethod.GET)
         kwargs.setdefault("url", RequestUrl.GETTOKEN)
         if not kwargs.get("url", "").startswith("http"):
             kwargs["url"] = self.base_url + kwargs["url"]
@@ -196,7 +196,7 @@ class Server:
         """
         kwargs = Dict(kwargs)
         kwargs.setdefault("response_handler", ResponseHandler.success)
-        kwargs.setdefault("method", "POST")
+        kwargs.setdefault("method", py3_requests.RequestMethod.POST)
         kwargs.setdefault("url", RequestUrl.MESSAGE_SEND)
         if not kwargs.get("url", "").startswith("http"):
             kwargs["url"] = self.base_url + kwargs["url"]
@@ -211,7 +211,7 @@ class Server:
         """
         kwargs = Dict(kwargs)
         kwargs.setdefault("response_handler", ResponseHandler.success)
-        kwargs.setdefault("method", "POST")
+        kwargs.setdefault("method", py3_requests.RequestMethod.POST)
         kwargs.setdefault("url", RequestUrl.MEDIA_UPLOAD)
         if not kwargs.get("url", "").startswith("http"):
             kwargs["url"] = self.base_url + kwargs["url"]
@@ -231,7 +231,7 @@ class Server:
         """
         kwargs = Dict(kwargs)
         kwargs.setdefault("response_handler", ResponseHandler.success)
-        kwargs.setdefault("method", "POST")
+        kwargs.setdefault("method", py3_requests.RequestMethod.POST)
         kwargs.setdefault("url", RequestUrl.MEDIA_UPLOADIMG)
         if not kwargs.get("url", "").startswith("http"):
             kwargs["url"] = self.base_url + kwargs["url"]
